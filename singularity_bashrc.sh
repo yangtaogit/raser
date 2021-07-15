@@ -19,6 +19,7 @@ fi
 source $HOME/geant4/install/bin/geant4.sh 
 export PYTHONPATH=$PYTHONPATH:$HOME/geant4/install/lib/python3.8/site-packages
 export GEANT4_INSTALL=$HOME/geant4/install
+export DISPLAY=localhost:11.0
 
 #--------------------------------------------------
 # Aliases
