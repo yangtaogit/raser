@@ -177,12 +177,15 @@ case $option in
 sub_0_3(){
 Time=2021_5_28
 case $option in 
-    0.3.1) echo "raser 2D lgad electric field..."
-		python3 python/raser_lgad.py LGAD
+
+	0.3.1) echo "raser 2D pin electric field..."
+		python3 python/raser.py 2D_SiC_PIN
+		;;
+		
+
+    0.3.2) echo "raser 2D lgad electric field..."
+		python3 python/raser.py 2D_SiC_LGAD
     	;;
-	0.3.2) echo "raser 2D pin electric field..."
-	python3 python/raser_lgad.py PIN
-    ;;
 		esac
 }
 
@@ -214,6 +217,6 @@ case $option in
         read option 
         sub_0_3 option 
         ;;
-    0.3.*) echo "RASER 3D"
+    0.3.*) echo "RASER LGAD"
         sub_0_3 option 
 		esac
