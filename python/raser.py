@@ -651,7 +651,7 @@ def main():
     args = sys.argv[1:]
     model = args[0]
 
-    if model == "2D":
+    if model == "2D" or "2D_SiC_PIN":
         twoD_time()
     if model == "2D_scan":
         output = args[1]

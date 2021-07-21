@@ -34,6 +34,7 @@ import time
 import sys
 import ROOT
 from array import array
+from raser import twoD_time 
 
 """ Global Constant """
 E0 = 1.60217733e-19 # C
@@ -141,7 +142,7 @@ class R2dDetector:
 
     def __init__(self,det_width,det_thin):
         self.det_width = det_width #um X-axis
-        self.det_thin = det_width #um Y-axis
+        self.det_thin = det_thin #um Y-axis
 
         self.n_bin = 1000
         self.t_end = 3e-9
@@ -517,7 +518,7 @@ class Drifts:
         self.n_step=0
         self.charge=0
 
-    def delta_p(self):
+    def delta_p(self): 
         # magnetic field effect
         if(self.charg)>0:
             FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
@@ -717,7 +718,7 @@ class Drifts:
 
         Drifts.cal_current(self,det,track)
 
-    def draw_drift_path(self):
+    def draw_drift_path(self,det):
         # ROOT.gStyle.SetOptStat(0)
         c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 1000)
         mg = ROOT.TMultiGraph("mg","")
@@ -747,6 +748,8 @@ class Drifts:
                 mg.Add(gr_n)
                 del x_array[:]
                 del y_array[:]
+        mg.GetXaxis().SetRangeUser(0,det.det_width)
+        mg.GetYaxis().SetRangeUser(0,det.det_thin)
         mg.Draw("APL")
         c1.SaveAs("drift_path.pdf")
 
@@ -813,8 +816,8 @@ def draw_current(det,ele_current,qtot,drift):
     det.sum_cu.GetXaxis().SetTitle("Time [s]")
     det.sum_cu.GetYaxis().SetTitle("Current [A]")
     det.sum_cu.Draw("HIST")
-    det.positive_cu.Draw("SAME HIST")
-    det.negtive_cu.Draw("SAME HIST")
+    #det.positive_cu.Draw("SAME HIST")
+    #det.negtive_cu.Draw("SAME HIST")
     c.Update()
     rightmax = 1.1*ele_current.GetMinimum()
     n_scale = ROOT.gPad.GetUymin() / rightmax
@@ -857,7 +860,7 @@ def draw_current(det,ele_current,qtot,drift):
         / det.sum_cu.GetNbinsX()) * 1e15
     print(charge_t)
     print(qtot*1e15)
-    drift.draw_drift_path()
+    drift.draw_drift_path(det)
 
 
 def main():
@@ -865,39 +868,39 @@ def main():
     model = args[0]
 
     # define geometry
-    my_lgad = R2dDetector(50,100) # [um]
+    my_det = R2dDetector(100,100) # [um]
 
     # set material
     my_sic_mat = Material('SiC')
-    my_lgad.set_mat(my_sic_mat)
+    my_det.set_mat(my_sic_mat)
 
     # set doping
     if model == "LGAD":
-        my_lgad.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
     if model == "PIN":
-        my_lgad.set_doping("((1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        twoD_time()
 
     # set operating condition
-    my_lgad.set_temperature(300) # [K]
-    my_lgad.set_bias_voltage(-200) # [V]
+    my_det.set_temperature(300) # [K]
+    my_det.set_bias_voltage(-200) # [V]
 
     # mesh
-    my_lgad.mesh(0.1, 0.1) # [um]
+    my_det.mesh(0.1, 0.1) # [um]
 
     # calculate electric field
-    my_possion_solver = FenicsPossion(my_lgad)
+    my_possion_solver = FenicsPossion(my_det)
     my_possion_solver.solve()
     my_possion_solver.draw()
 
     my_track = Tracks()
-    my_track.mips([25,0],[25,50],500)
+    my_track.mips([50,0],[50,my_det.det_thin],100)
 
     drift = Drifts(my_track)
-    drift.ionized_drift(my_track,my_possion_solver,my_lgad)
+    drift.ionized_drift(my_track,my_possion_solver,my_det)
     ### after the electronics
     my_electronics = Amplifier()
-    qtot,ele_current=my_electronics.CSA_amp(my_lgad,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    draw_current(my_lgad,ele_current,qtot,drift)
+    qtot,ele_current=my_electronics.CSA_amp(my_det,t_rise=0.4,t_fall=0.2,trans_imp=10)
+    draw_current(my_det,ele_current,qtot,drift)
 
 
 
