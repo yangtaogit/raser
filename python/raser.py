@@ -2,6 +2,7 @@
 #  Created [2021-05-18 Tues 14:11] 
 #  Based on Raser C++ https://github.com/dt-np/raser
 
+from operator import mod
 import matplotlib.pyplot as plt
 from array import array
 import fenics
@@ -32,13 +33,14 @@ class R2dDetector:
 #Calculate the weighting potential and electric field
 class Fenics_cal:
     #parameter of SiC
-    def __init__(self,my_d):
+    def __init__(self,my_d, model="PIN"):
         self.l_x = my_d.l_x #size
         self.l_y = my_d.l_y
         self.n_x = my_d.n_x #n step
         self.n_y = my_d.n_y
         self.lx_step = self.l_x/self.n_x
         self.ly_step = self.l_y/self.n_y
+        self.model = model
 
         self.p_electric = []
         self.w_p_electric = []
@@ -60,7 +62,15 @@ class Fenics_cal:
         # # Define variational problem
         u = fenics.TrialFunction(self.V)
         v = fenics.TestFunction(self.V)
-        f = fenics.Constant(self.f_value)
+
+        if self.model == "PIN":
+            f = fenics.Constant(self.f_value)
+        elif self.model == "SiC_LGAD":
+            doping_epr = "(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12"
+            f = fenics.Expression(doping_epr,degree=2)
+        else:
+            raise NameError(self.model)
+
         a = fenics.dot(fenics.grad(u), fenics.grad(v))*fenics.dx
         L = f*v*fenics.dx
         # # Compute solution
@@ -229,6 +239,7 @@ class Drifts:
         self.max_drift_len=1e9 #maximum diftlenght [um]
         self.d_dic_n = {}
         self.d_dic_p = {}
+        self.s_time = 0
         for n in range(len(my_track.p_tracks)):
             self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(4) ]
             self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(4) ]
@@ -592,17 +603,28 @@ class Matplt:
         plt.savefig("test_electric.pdf")
         # plt.show()
 ### get the 2D simulation basics information
-def twoD_time():
+def twoD_time(model="PIN"):
     ### define the structure of the detector
     my_detector = R2dDetector(100,100)
     my_detector.mesh_step(1)
     my_detector.set_para(doping=-10,voltage=-500,temperature=300)
     ### get the electric field and weighting potential
-    my_field = Fenics_cal(my_detector)
+
+    if model == "PIN":
+        my_field = Fenics_cal(my_detector)
+
+    
+    elif model == "SiC_LGAD":
+        my_field = Fenics_cal(my_detector,model="SiC_LGAD")
+
+    else:
+        raise NameError(model)
+
     my_field.fenics_p_electric(my_detector) 
     my_field.fenics_p_w_electric(my_detector)
     my_field.change_data_form(my_detector)
     my_field.cal_field(my_detector)  
+
     ### define the tracks and type of incident particles
     my_track = Tracks()
     my_track.t_mip([50,0],[50,100],100)
@@ -651,12 +673,21 @@ def main():
     args = sys.argv[1:]
     model = args[0]
 
-    if model == "2D" or "2D_SiC_PIN":
+    if model in ["2D","2D_SiC_PIN"]:
         twoD_time()
-    if model == "2D_scan":
+
+    elif model == "2D_scan":
         output = args[1]
         v_number = int(args[2])
         twoD_time_scan(output,v_number)
+
+    elif model == "2D_SiC_LGAD":
+        twoD_time("SiC_LGAD")
+
+    else:
+        raise NameError(model) 
+
+        
     
 if __name__ == '__main__':
     #record run time
