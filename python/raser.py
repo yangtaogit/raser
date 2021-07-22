@@ -18,9 +18,9 @@ class R2dDetector:
     def __init__(self,l_x,l_y):
         self.l_x = l_x #size
         self.l_y = l_y
-    def mesh_step(self,l_step):
-        self.n_x = int(self.l_x/l_step) #mesh step
-        self.n_y = int(self.l_y/l_step)
+    def mesh_step(self,lx_step,ly_step):
+        self.n_x = int(self.l_x/lx_step) #mesh step
+        self.n_y = int(self.l_y/ly_step)
     def set_para(self,doping,voltage,temperature):
         self.d_neff = doping #dopingX1e12 cm^-3
         self.v_voltage = voltage #Voltage
@@ -70,7 +70,6 @@ class Fenics_cal:
             f = fenics.Expression(doping_epr,degree=2)
         else:
             raise NameError(self.model)
-
         a = fenics.dot(fenics.grad(u), fenics.grad(v))*fenics.dx
         L = f*v*fenics.dx
         # # Compute solution
@@ -105,7 +104,7 @@ class Fenics_cal:
         for j in range(ny):
             for i in range(nx):
                 self.x_position[i].append(self.lx_step*(i))
-                self.y_position[i].append(self.lx_step*(j))
+                self.y_position[i].append(self.ly_step*(j))
                 if (j==0):
                     self.p_w_electric[i].append(0)
                     self.p_electric[i].append(my_d.v_voltage)
@@ -113,8 +112,8 @@ class Fenics_cal:
                     self.p_w_electric[i].append(1)
                     self.p_electric[i].append(0)
                 else:
-                    self.p_w_electric[i].append(self.w_electric_value[i+j*ny])
-                    self.p_electric[i].append(self.electric_value[i+j*ny])
+                    self.p_w_electric[i].append(self.w_electric_value[i+j*nx])
+                    self.p_electric[i].append(self.electric_value[i+j*nx])
 
     def cal_field(self,my_d):
         nx = my_d.n_x
@@ -126,7 +125,7 @@ class Fenics_cal:
         for j in range(ny):
             for i in range(nx): 
                 self.x_f_position[i].append(0.5*self.lx_step*(2*i+1))
-                self.y_f_position[i].append(0.5*self.lx_step*(2*j+1))
+                self.y_f_position[i].append(0.5*self.ly_step*(2*j+1))
                 self.ex_electric[i].append((self.p_electric[i+1][j]-self.p_electric[i][j])/self.lx_step)
                 self.ey_electric[i].append((self.p_electric[i][j+1]-self.p_electric[i][j])/self.ly_step)
 
@@ -407,6 +406,7 @@ class Drifts:
                 #generated particles positions
                 self.d_x=my_t.p_tracks[i][0]#initial position
                 self.d_y=my_t.p_tracks[i][1]
+                self.s_time=0.0
                 while (self.end_cond==0):
                     if (self.d_y>=(my_d.l_y-1) or self.d_x>=(my_d.l_x-1)):
                         self.end_cond=3  
@@ -587,15 +587,21 @@ class Matplt:
         plt.title('Electric field')
         plt.xlabel('depth [um]')
         plt.ylabel('Electric field [V/um]')
-        plt.plot(my_f.y_f_position[0],my_f.ey_electric[0])
+        plt.plot(my_f.y_f_position[1],my_f.ey_electric[1])
 
         plt.subplot(2,2,2)
+        plt.title('Electric field')
+        plt.xlabel('X [um]')
+        plt.ylabel('Electric field [V/um]')
+        plt.plot(my_f.x_f_position[1],my_f.ex_electric[1])
+
+        plt.subplot(2,2,3)
         plt.title('weighting potential')
         plt.xlabel('depth [um]')
         plt.ylabel('Electric potential [V]')
         plt.plot(my_f.y_position[0], my_f.p_w_electric[0])
 
-        plt.subplot(2,2,3)
+        plt.subplot(2,2,4)
         plt.title('potential')
         plt.xlabel('depth [um]')
         plt.ylabel('Electric potential [V]')
@@ -605,11 +611,10 @@ class Matplt:
 ### get the 2D simulation basics information
 def twoD_time(model="PIN"):
     ### define the structure of the detector
-    my_detector = R2dDetector(100,100)
-    my_detector.mesh_step(1)
-    my_detector.set_para(doping=-10,voltage=-500,temperature=300)
+    my_detector = R2dDetector(100,50)
+    my_detector.mesh_step(1,1)
+    my_detector.set_para(doping=-10,voltage=-200,temperature=300)
     ### get the electric field and weighting potential
-
     if model == "PIN":
         my_field = Fenics_cal(my_detector)
 
@@ -627,7 +632,7 @@ def twoD_time(model="PIN"):
 
     ### define the tracks and type of incident particles
     my_track = Tracks()
-    my_track.t_mip([50,0],[50,100],100)
+    my_track.t_mip([50,0],[50,50],100)
     ### drift of ionized particles
     my_drift = Drifts(my_track)
     my_drift.ionized_drift(my_track,my_field,my_detector)
@@ -644,7 +649,7 @@ def twoD_time(model="PIN"):
 def twoD_time_scan(output,number):
     ### define the structure of the detector
     my_detector = R2dDetector(100,100)
-    my_detector.mesh_step(25)
+    my_detector.mesh_step(25,25)
     my_detector.set_para(doping=-10,voltage=-500,temperature=300)
     ### get the electric field and weighting potential
     my_field = Fenics_cal(my_detector)
