@@ -184,7 +184,7 @@ class FenicsPossion:
 
         # poential & field
         self.potential_value_2d = []
-    
+
         self.electric_field_x_value = [ [] for n in range(self.det.ny+1) ]
         self.electric_field_y_value = [ [] for n in range(self.det.ny) ]
 
@@ -237,7 +237,7 @@ class FenicsPossion:
 
         self.potential_value_2d = potential_value_2d
 
-        # print(potential_value_2d)
+        print(potential_value_2d)
 
 
     def cal_weighting_possion(self):
@@ -314,12 +314,20 @@ class FenicsPossion:
                 # electric field
                 tmp_ypos = 0.5*y_step*(2*j+1)
                 tmp_ef = (self.potential_value_2d[j][i]- self.potential_value_2d[j+1][i])/y_step
+                #print("tmp_ypos")
+                #print(tmp_ypos)
+                #print("tmp_ef")
+                #print(tmp_ef)
                 self.electric_field_y_position[j].append(tmp_ypos)
                 self.electric_field_y_value[j].append(tmp_ef)
 
                 # weighting field
                 tmp_wypos = 0.5*y_step*(2*j+1)
                 tmp_wef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j+1][i])/y_step
+                #print("tmp_wypos")
+                #print(tmp_wypos)
+                #print("tmp_wef")
+                print(tmp_wef)
                 self.weighting_electric_field_y_position[j].append(tmp_wypos)
                 self.weighting_electric_field_y_value[j].append(tmp_wef)     
 
@@ -401,12 +409,11 @@ class FenicsPossion:
 
     def draw(self):
 
-        cutline = int(self.det.ny/2)
+        cutline = int(self.det.nx/2)
 
         # plot electric field at x = middle
         ep = array( 'd' )
         ev = array( 'd' )
-
         for i in range(self.det.ny):
             ep.append(self.electric_field_y_position[i][cutline])
             ev.append(self.electric_field_y_value[i][cutline])
@@ -497,7 +504,10 @@ class Tracks:
 
 class Drifts:
 
-    def __init__(self,track):
+    def __init__(self,track,projGrid,r_nBins,z_nBins):
+        self.projGrid = projGrid
+        self.r_nBins = r_nBins
+        self.z_nBins = z_nBins
         self.muhh=1650   #mobility related with the magnetic field (now silicon useless)
         self.muhe=310
         self.BB=np.array([0,0])
@@ -609,7 +619,6 @@ class Drifts:
                 self.d_dic_n["tk_"+str(self.n_track)][3].append(self.d_time)
 
     def cal_current(self,det,track):
-
         det.positive_cu.Reset()
         det.negtive_cu.Reset()
         det.sum_cu.Reset()
@@ -617,26 +626,16 @@ class Drifts:
         test_p = ROOT.TH1F("test+","test+",det.n_bin,0,det.t_end)
         test_n = ROOT.TH1F("test-","test-",det.n_bin,0,det.t_end)
         test_sum = ROOT.TH1F("test sum","test sum",det.n_bin,0,det.t_end)
-        total_pairs = 0
-
-        for j in range(len(track.p_tracks)):
-            for i in range(len(self.d_dic_p["tk_"+str(j+1)][2])):
-                test_p.Fill(self.d_dic_p["tk_"+str(j+1)][3][i],self.d_dic_p["tk_"+str(j+1)][2][i])
-            test_p = Drifts.get_current_his(self,test_p)           
-            for i in range(len(self.d_dic_n["tk_"+str(j+1)][2])):
-                test_n.Fill(self.d_dic_n["tk_"+str(j+1)][3][i],self.d_dic_n["tk_"+str(j+1)][2][i])
-            test_n = Drifts.get_current_his(self,test_n)
-            n_pairs=Drifts.get_energy_loss(self,track.d_tracks[j])
-            total_pairs+=n_pairs
-            test_p.Scale(n_pairs)
-            test_n.Scale(n_pairs)            
-            det.positive_cu.Add(test_p)
-            det.negtive_cu.Add(test_n)
-            test_p.Reset()
-            test_n.Reset()
-
-        laudau_t_pairs = Drifts.get_laudau_dis(self,track)
-        n_scale = laudau_t_pairs/total_pairs
+        total_pairs = str(np.sum(self.projGrid))
+        for i_r in range(self.r_nBins):
+            for i_z in range(self.z_nBins):
+                test_p.Scale(self.projGrid)
+                test_n.Scale(self.projGrid)
+                det.positive_cu.Add(test_p)
+                det.negtive_cu.Add(test_n)
+                test_p.Reset()
+                test_n.Reset()
+        n_scale = 2500
         det.positive_cu.Scale(n_scale)
         det.negtive_cu.Scale(n_scale)
         det.sum_cu.Add(det.positive_cu)
@@ -689,6 +688,7 @@ class Drifts:
                 #generated particles positions
                 self.d_x=track.p_tracks[i][0]#initial position
                 self.d_y=track.p_tracks[i][1]
+                self.s_time=0.0
                 while (self.end_cond==0):
                     if (self.d_y>=(det.det_thin-1) or self.d_x>=(det.det_width-1)):
                         self.end_cond=3  
@@ -890,7 +890,11 @@ def main():
     # calculate electric field
     my_possion_solver = FenicsPossion(my_det)
     my_possion_solver.solve()
+    print("test1")
     my_possion_solver.draw()
+    my_track = TTracks()
+    my_track.mmips(r_max,r_min,z_max,z_min,r_nBins,z_nBins)
+    print("test2")
 
     my_track = Tracks()
     my_track.mips([50,0],[50,my_det.det_thin],100)
