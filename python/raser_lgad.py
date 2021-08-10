@@ -34,6 +34,7 @@ import time
 import sys
 import ROOT
 from array import array
+from raser import twoD_time 
 
 """ Global Constant """
 E0 = 1.60217733e-19 # C
@@ -497,27 +498,6 @@ class Tracks:
             p_x = x_div_point
             p_y = y_div_point
 
-class TTracks():
-    def mmips(self,r_max,r_min,z_max,z_min,r_nBins,z_nBins):
-        z_step = (z_max - z_min)/z_nBins
-        r_step = (r_max - r_min)/r_nBins
-        n_div   = r_nBins*z_nBins
-        for i_r in range(r_nBins):
-            for i_z in range(z_nBins):
-                p_entry = [i_z*z_step, i_r*r_step]
-                p_exit  = [z_max,i_r*r_step]
-                self.p_tracks = [ [] for n in range(n_div-1) ]
-                self.d_tracks = []
-                p_x=p_entry[0]
-                p_y=p_entry[1]
-                for i in range(n_div-1):
-                    x_div_point = (p_exit[0]-p_entry[0])/n_div*i+p_entry[0]+(p_exit[0]-p_entry[0])/(2*n_div)
-                    y_div_point = (p_exit[1]-p_entry[1])/n_div*i+p_entry[1]+(p_exit[1]-p_entry[1])/(2*n_div)
-                    self.p_tracks[i].append(x_div_point)
-                    self.p_tracks[i].append(y_div_point)
-                    self.d_tracks.append(math.sqrt(math.pow(x_div_point-p_x,2)+math.pow(y_div_point-p_y,2)))
-                    p_x = x_div_point
-                    p_y = y_div_point
 
 
 """ Define Detector Geometry """
@@ -548,7 +528,7 @@ class Drifts:
         self.n_step=0
         self.charge=0
 
-    def delta_p(self):
+    def delta_p(self): 
         # magnetic field effect
         if(self.charg)>0:
             FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
@@ -738,7 +718,7 @@ class Drifts:
 
         Drifts.cal_current(self,det,track)
 
-    def draw_drift_path(self):
+    def draw_drift_path(self,det):
         # ROOT.gStyle.SetOptStat(0)
         c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 1000)
         mg = ROOT.TMultiGraph("mg","")
@@ -768,6 +748,8 @@ class Drifts:
                 mg.Add(gr_n)
                 del x_array[:]
                 del y_array[:]
+        mg.GetXaxis().SetRangeUser(0,det.det_width)
+        mg.GetYaxis().SetRangeUser(0,det.det_thin)
         mg.Draw("APL")
         c1.SaveAs("drift_path.pdf")
 
@@ -813,26 +795,6 @@ class Amplifier:
             hist.SetBinContent(i,shaper_out_V[i])
         return qtot,hist
 
-class SPAGeneration():
-    def __init__(self,tau, alfa ,power, wavelength, widthBeamWaist, refractionIndex):
-        self.tau = tau
-        self.alfa = alfa
-        self.power = power
-        self.wavelength = wavelength
-        self.widthBeamWaist = widthBeamWaist
-        self.refractionIndex = refractionIndex
-    def getWidthSquared(self,z):
-        return (self.widthBeamWaist**2)*(1+((self.wavelength*z)/(np.pi* (self.widthBeamWaist**2)*self.refractionIndex))**2)
-    def getWidth(self,z):
-        return np.sqrt(self.getWidthSquared(z))
-    def getIntensity(self,r,z,z_o = 0 ):
-        widthSquared= self.getWidthSquared(z-z_o)
-        intensity = ((2*self.power)/(np.pi*widthSquared))*np.exp((-2*(r**2)/(widthSquared)))*np.exp(-self.alfa*z)
-        return intensity
-    def getCarrierDensity(self,r,z,z_o = 0 ):
-        I = self.getIntensity(r,z,z_o)
-        return (self.alfa*I)/(3.6*1.60217657e-19)
-
 def draw_current(det,ele_current,qtot,drift):
 
     ROOT.gStyle.SetOptStat(0)
@@ -854,8 +816,8 @@ def draw_current(det,ele_current,qtot,drift):
     det.sum_cu.GetXaxis().SetTitle("Time [s]")
     det.sum_cu.GetYaxis().SetTitle("Current [A]")
     det.sum_cu.Draw("HIST")
-    det.positive_cu.Draw("SAME HIST")
-    det.negtive_cu.Draw("SAME HIST")
+    #det.positive_cu.Draw("SAME HIST")
+    #det.negtive_cu.Draw("SAME HIST")
     c.Update()
     rightmax = 1.1*ele_current.GetMinimum()
     n_scale = ROOT.gPad.GetUymin() / rightmax
@@ -898,75 +860,35 @@ def draw_current(det,ele_current,qtot,drift):
         / det.sum_cu.GetNbinsX()) * 1e15
     print(charge_t)
     print(qtot*1e15)
-    drift.draw_drift_path()
+    drift.draw_drift_path(det)
 
 
 def main():
-    tau = 350e-12 # ps
-    alfa = 987  # SI
-    power = 1e-11 # J/s
-    wavelength = 1.064 # um
-    widthBeamWaist = 5 # um
-    refractionIndex = 3.51
-    z_o = 65 # z focus position in um
-
-    r_min = -25 # um
-    r_max = +25 # um
-    r_nBins = 50
-    z_min = 0. # um
-    z_max = 1300 # um
-    z_nBins = 130
-    
-    rArray = np.linspace(r_min*1e-6,r_max*1e-6,r_nBins)
-    zArray = np.linspace(z_min*1e-6,z_max*1e-6,z_nBins)
-    rGrid, zGrid = np.meshgrid(rArray, zArray)
-    r_step = abs(r_max*1e-6-r_min*1e-6)/r_nBins
-    z_step = abs(z_max*1e-6-z_min*1e-6)/z_nBins
-
-    carrierGeneration = SPAGeneration(tau,alfa,power, wavelength, widthBeamWaist, refractionIndex)
-    CGrid = carrierGeneration.getCarrierDensity(rGrid, zGrid, z_o)
-    xArray = rArray
-    x_step = r_step
-    yArray = rArray
-    y_step = r_step
-    xGrid = rGrid.copy()
-    yGrid = rGrid.copy()
-    projGrid = CGrid.copy()
-
-    for i_z in range(z_nBins):
-        for i_r in range(r_nBins):
-            x_value = xGrid[i_z, i_r]
-            r_valueArray = np.sqrt(x_value*x_value+ yArray*yArray)
-            z_value = zGrid[i_z, i_r]
-            z_valueArray = np.ones_like(r_valueArray)*z_value
-            carr_den_projArray = carrierGeneration.getCarrierDensity(r_valueArray, z_valueArray, z_o)
-            projGrid[i_z, i_r] = (carr_den_projArray.sum()*y_step)/5000
-    projGrid = projGrid*x_step*z_step
-    print(projGrid)
-
     args = sys.argv[1:]
     model = args[0]
+
     # define geometry
-    my_lgad = R2dDetector(1300,50) # [um]
+    my_det = R2dDetector(100,100) # [um]
 
     # set material
     my_sic_mat = Material('SiC')
-    my_lgad.set_mat(my_sic_mat)
+    my_det.set_mat(my_sic_mat)
 
     # set doping
     if model == "LGAD":
-        my_lgad.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
     if model == "PIN":
-        my_lgad.set_doping("((1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        twoD_time()
 
     # set operating condition
-    my_lgad.set_temperature(300) # [K]
-    my_lgad.set_bias_voltage(-200) # [V]
+    my_det.set_temperature(300) # [K]
+    my_det.set_bias_voltage(-200) # [V]
+
     # mesh
-    my_lgad.mesh(130,1) # [um]
-    print("test")
+    my_det.mesh(0.1, 0.1) # [um]
+
     # calculate electric field
-    my_possion_solver = FenicsPossion(my_lgad)
+    my_possion_solver = FenicsPossion(my_det)
     my_possion_solver.solve()
     print("test1")
     my_possion_solver.draw()
@@ -974,13 +896,15 @@ def main():
     my_track.mmips(r_max,r_min,z_max,z_min,r_nBins,z_nBins)
     print("test2")
 
-    drift = Drifts(my_track,projGrid,r_nBins,z_nBins)
-    drift.ionized_drift(my_track,my_possion_solver,my_lgad)
-    print("test3")
+    my_track = Tracks()
+    my_track.mips([50,0],[50,my_det.det_thin],100)
+
+    drift = Drifts(my_track)
+    drift.ionized_drift(my_track,my_possion_solver,my_det)
     ### after the electronics
     my_electronics = Amplifier()
-    qtot,ele_current=my_electronics.CSA_amp(my_lgad,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    draw_current(my_lgad,ele_current,qtot,drift)
+    qtot,ele_current=my_electronics.CSA_amp(my_det,t_rise=0.4,t_fall=0.2,trans_imp=10)
+    draw_current(my_det,ele_current,qtot,drift)
 
 
 

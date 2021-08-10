@@ -1,4 +1,4 @@
-1#  Author: Yuhang Tan <tanyuhang@ihep.ac.cn> 
+#  Author: Yuhang Tan <tanyuhang@ihep.ac.cn> 
 #  Created [2021-05-18 Tues 14:11] 
 #  Based on Raser C++ https://github.com/dt-np/raser
 
@@ -25,7 +25,7 @@ class R2dDetector:
         self.d_neff = doping #dopingX1e12 cm^-3
         self.v_voltage = voltage #Voltage
         self.temperature = temperature #Temperature
-        self.n_bin = 3000    #or 100 or 3000
+        self.n_bin = 1000    #or 100 or 3000
         self.t_end = 2e-9
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
@@ -751,6 +751,7 @@ class Amplifier():
         hist = ROOT.TH1F()
         my_d.sum_cu.Copy(hist)
         max_num = hist.GetNbinsX()
+        print(max_num)
         preamp_Q = [0.0]*max_num
         itot = [0.0]*max_num
         shaper_out_Q = [0.0]*max_num
@@ -853,10 +854,8 @@ def draw_plot(my_detector,ele_current,qtot,my_drift):
     #print(charge_t)
     #print(qtot*1e15)
     my_drift.draw_drift_path()
-    # question
-    # i=0
-    # while(i<100):
-    #     i=1
+
+
 
 def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
 
@@ -924,6 +923,12 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
     print(charge_t)
     print(qtot*1e15)
     my_drift.draw_drift_path()
+
+    elecu = [ []for n in range(ele_current.GetNbinsX())]
+    for i in range(ele_current.GetNbinsX()):
+        elecu[i].append(ele_current.GetBinContent(i))
+    mincu = min(elecu)
+    return(mincu)
 
 def draw_nocarrier(my_t,nocarrier):
     c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
@@ -1007,13 +1012,13 @@ class Matplt:
         plt.savefig("test_electric.pdf")
         # plt.show()
 
-def Nocarrier(r):
+def Nocarrier(r, rlen, zlen):
     z_o = 0 # z focus position in um
     r_min = -r # um
-    r_max = r+ 50 # um
+    r_max = -r+ rlen # um
     r_nBins = 50
     z_min = 0. # um
-    z_max = 1300 # um
+    z_max = zlen # um
     z_nBins = 130
 
     my_pro = ProjGrid(r_min, r_max, r_nBins, z_max, z_min, z_nBins, z_o)
@@ -1021,7 +1026,6 @@ def Nocarrier(r):
     carriergeneration = SPAGeneration()
     CGrid = carriergeneration.getCarrierDensity(rGrid, zGrid, z_o*1e-6)
     xGrid = rGrid.copy()
-    yGrid = rGrid.copy()
     projGrid = CGrid.copy()
     
     for i_z in range(z_nBins):
@@ -1040,7 +1044,9 @@ def Nocarrier(r):
 ### get the 2D TCT simulation basics information
 def twoD_TCT(model="PIN"):
     ### define the structure of the detector
-    my_detector = R2dDetector(1300,50)
+    rlen = 50
+    zlen = 1300
+    my_detector = R2dDetector(zlen, rlen)
     my_detector.mesh_step(10,10)
     my_detector.set_para(doping=-10,voltage=-200,temperature=300)
     ### get the electric field and weighting potential
@@ -1053,26 +1059,52 @@ def twoD_TCT(model="PIN"):
     else:
         raise NameError(model)
     
-    nocarrier = Nocarrier(50)    #Input the position of the laser
-    my_field.fenics_p_electric(my_detector) 
-    my_field.fenics_p_w_electric(my_detector)
-    my_field.change_data_form(my_detector)
-    my_field.cal_field(my_detector)
-    ### define the tracks and type of incident particles
-    my_track = TCTTracks()
-    my_track.t_mip(130,50,nocarrier)
-    ### drift of ionized particles
-    my_drift = TCTDrifts(my_track)
-    my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
-    ### after the electronics
-    my_electronics = Amplifier()
-    qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    ### matlab plot and show
-    my_plot = Matplt()
-    my_plot.plot_basic_info(my_field,my_drift)
-    ### root plot
-    TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
-    draw_nocarrier(my_track,nocarrier)
+    cvmin = ROOT.TCanvas("cvmin", "canvas1", 200, 10, 1000, 1000)
+    mg = ROOT.TMultiGraph("mg","")
+    x_array=array('f')
+    y_array=array('f')
+
+    x = [[]for n in range(rlen)]
+    for i in range(rlen):
+        nocarrier = Nocarrier(i, rlen, zlen)    #Input the position of the laser
+        my_field.fenics_p_electric(my_detector) 
+        my_field.fenics_p_w_electric(my_detector)
+        my_field.change_data_form(my_detector)
+        my_field.cal_field(my_detector)
+        ### define the tracks and type of incident particles
+        my_track = TCTTracks()
+        my_track.t_mip(130,50,nocarrier)
+        ### drift of ionized particles
+        my_drift = TCTDrifts(my_track)
+        my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
+        ### after the electronics
+        my_electronics = Amplifier()
+        qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
+        ### matlab plot and show
+        my_plot = Matplt()
+        my_plot.plot_basic_info(my_field,my_drift)
+        ### root plot
+        draw_nocarrier(my_track,nocarrier)
+        cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
+        vmin = [i * 50 for i in cumin]
+        print(vmin)
+        x[i].append(i)
+        x_array.extend(x[i])
+        y_array.extend(vmin)
+        print(x_array)
+        print(y_array)
+        n = 1
+        gr = ROOT.TGraph(n,x_array,y_array)
+        gr.SetMarkerColor(4)
+        gr.SetLineColor(4)
+        gr.SetLineStyle(1)
+        gr.SetMarkerStyle(1)
+        gr.SetMarkerSize(30)
+        mg.Add(gr)
+        del x_array[:]
+        del y_array[:]
+    mg.Draw("APL")
+    cvmin.SaveAs("vmin.pdf")
 
 ### get the 2D simulation basics information
 def twoD_time(model="PIN"):
@@ -1089,7 +1121,6 @@ def twoD_time(model="PIN"):
 
     else:
         raise NameError(model)
-    
     my_field.fenics_p_electric(my_detector) 
     my_field.fenics_p_w_electric(my_detector)
     my_field.change_data_form(my_detector)
