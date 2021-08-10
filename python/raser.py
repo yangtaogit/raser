@@ -1,4 +1,4 @@
-#  Author: Yuhang Tan <tanyuhang@ihep.ac.cn> 
+1#  Author: Yuhang Tan <tanyuhang@ihep.ac.cn> 
 #  Created [2021-05-18 Tues 14:11] 
 #  Based on Raser C++ https://github.com/dt-np/raser
 
@@ -25,7 +25,11 @@ class R2dDetector:
         self.d_neff = doping #dopingX1e12 cm^-3
         self.v_voltage = voltage #Voltage
         self.temperature = temperature #Temperature
+<<<<<<< HEAD
         self.n_bin = 1000    #or 100 or 3000
+=======
+        self.n_bin = 3000    #or 100 or 3000
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
         self.t_end = 2e-9
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
@@ -853,6 +857,7 @@ def draw_plot(my_detector,ele_current,qtot,my_drift):
         / my_detector.sum_cu.GetNbinsX()) * 1e15
     #print(charge_t)
     #print(qtot*1e15)
+<<<<<<< HEAD
     my_drift.draw_drift_path()
 
 
@@ -922,6 +927,8 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
         / my_detector.sum_cu.GetNbinsX()) * 1e15
     print(charge_t)
     print(qtot*1e15)
+=======
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_drift.draw_drift_path()
 
     elecu = [ []for n in range(ele_current.GetNbinsX())]
@@ -929,6 +936,125 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
         elecu[i].append(ele_current.GetBinContent(i))
     mincu = min(elecu)
     return(mincu)
+
+def draw_nocarrier(my_t,nocarrier):
+    c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
+    h = ROOT.TH2D("h","pairs of carrier generation",len(my_t.p_tracks[0]),0,1300,len(my_t.p_tracks),0,50)
+    for i_r in range(len(my_t.p_tracks)):
+        for i_z in range(len(my_t.p_tracks[i_r])):
+            if nocarrier[i_z,i_r]>1:
+                n = nocarrier[i_z,i_r]
+                h.Fill(i_z*10, i_r*1, n)
+            else:
+                continue
+    h.Draw()
+    c1.SaveAs("nocarrier.pdf")
+
+class SPAGeneration():
+    def __init__(self):
+        self.tau = 350e-12   #ps
+        self.alfa = 987      #SI
+        self.power = 1e-11   #J/s
+        self.wavelength = 1.064e-6  #m
+        self.widthBeamWaist = 5e-6  #m
+        self.refractionIndex = 3.51
+
+    def getWidthSquared(self,z):
+        return (self.widthBeamWaist**2)*(1+((self.wavelength*z)/(np.pi* (self.widthBeamWaist**2)*self.refractionIndex))**2)
+    def getWidth(self,z):
+        return np.sqrt(self.getWidthSquared(z))
+    def getIntensity(self,r,z,z_o = 0 ):
+        widthSquared= self.getWidthSquared(z-z_o)
+        intensity = ((2*self.power)/(np.pi*widthSquared))*np.exp((-2*(r**2)/(widthSquared)))*np.exp(-self.alfa*z)
+        return intensity
+    def getCarrierDensity(self,r,z,z_o = 0 ):
+        I = self.getIntensity(r,z,z_o)
+        return (self.alfa*I)/(3.6*1.60217657e-19)
+
+class ProjGrid():
+    def __init__(self,r_min,r_max,r_nBins,z_max,z_min,z_nBins,z_o):
+        self.r_min = r_min
+        self.r_max = r_max
+        self.r_nBins = r_nBins
+        self.z_min = z_min
+        self.z_max = z_max
+        self.z_nBins = z_nBins
+        self.z_o = z_o
+        self.rArray = np.linspace(r_min*1e-6,r_max*1e-6,r_nBins)
+        self.zArray = np.linspace(z_min*1e-6,z_max*1e-6,z_nBins)
+        self.r_step = abs(r_max*1e-6-r_min*1e-6)/r_nBins
+        self.z_step = abs(z_max*1e-6-z_min*1e-6)/z_nBins
+        self.xArray = self.rArray
+        self.yArray = self.rArray
+        self.x_step = self.r_step
+        self.y_step = self.r_step
+
+def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
+
+    ROOT.gStyle.SetOptStat(0)
+    c = ROOT.TCanvas("c", "canvas", 200,10,1000, 1000)
+    c.SetLeftMargin(0.12)
+    c.SetRightMargin(0.12)
+    # c.SetTopMargin(0.12)
+    c.SetBottomMargin(0.14)
+    my_detector.sum_cu.GetXaxis().SetTitleOffset(1.2)
+    my_detector.sum_cu.GetXaxis().SetTitleSize(0.05)
+    my_detector.sum_cu.GetXaxis().SetLabelSize(0.04)
+    my_detector.sum_cu.GetXaxis().SetNdivisions(510)
+    my_detector.sum_cu.GetYaxis().SetTitleOffset(1.1)
+    my_detector.sum_cu.GetYaxis().SetTitleSize(0.05)
+    my_detector.sum_cu.GetYaxis().SetLabelSize(0.04)
+    my_detector.sum_cu.GetYaxis().SetNdivisions(505)
+    my_detector.sum_cu.GetXaxis().CenterTitle()
+    my_detector.sum_cu.GetYaxis().CenterTitle()
+    my_detector.sum_cu.GetXaxis().SetTitle("Time [s]")
+    my_detector.sum_cu.GetYaxis().SetTitle("Current [A]")
+    my_detector.sum_cu.Draw("HIST")
+    my_detector.positive_cu.Draw("SAME HIST")
+    my_detector.negtive_cu.Draw("SAME HIST")
+    c.Update()
+    rightmax = 1.1*ele_current.GetMinimum()
+    n_scale = ROOT.gPad.GetUymin() / rightmax
+    ele_current.Scale(n_scale)
+    ele_current.Draw("SAME HIST")
+    my_detector.sum_cu.SetLineColor(3)
+    my_detector.positive_cu.SetLineColor(2)
+    my_detector.negtive_cu.SetLineColor(4)
+    ele_current.SetLineColor(6)
+    my_detector.sum_cu.SetLineWidth(2)
+    my_detector.positive_cu.SetLineWidth(2)
+    my_detector.negtive_cu.SetLineWidth(2)
+    ele_current.SetLineWidth(2)    
+    axis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), rightmax, 0, 510, "+L")
+    axis.SetLineColor(6)
+    axis.SetTextColor(6)
+    axis.SetTextSize(0.02)
+    axis.SetLabelColor(6)
+    axis.SetLabelSize(0.02)
+    axis.SetTitle("Ampl [mV]")
+    axis.CenterTitle()
+    axis.Draw("same")
+
+    legend = ROOT.TLegend(0.5, 0.3, 0.8, 0.6)
+    legend.AddEntry(my_detector.negtive_cu, "electron", "l")
+    legend.AddEntry(my_detector.positive_cu, "hole", "l")
+    legend.AddEntry(my_detector.sum_cu, "e+h", "l")
+    legend.AddEntry(ele_current, "electronics", "l")
+    legend.SetBorderSize(0)
+    legend.SetTextFont(43)
+    legend.SetTextSize(40)
+    legend.Draw("same")
+
+    c.Update()
+    c.SaveAs("basic_infor.pdf")
+    
+    charge_t=my_detector.sum_cu.Integral() \
+        * ((my_detector.sum_cu.GetXaxis().GetXmax() \
+        - my_detector.sum_cu.GetXaxis().GetXmin()) \
+        / my_detector.sum_cu.GetNbinsX()) * 1e15
+    print(charge_t)
+    print(qtot*1e15)
+    my_drift.draw_drift_path()
 
 def draw_nocarrier(my_t,nocarrier):
     c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
@@ -1012,6 +1138,7 @@ class Matplt:
         plt.savefig("test_electric.pdf")
         # plt.show()
 
+<<<<<<< HEAD
 def Nocarrier(r, rlen, zlen):
     z_o = 0 # z focus position in um
     r_min = -r # um
@@ -1019,6 +1146,15 @@ def Nocarrier(r, rlen, zlen):
     r_nBins = 50
     z_min = 0. # um
     z_max = zlen # um
+=======
+def Nocarrier(r):
+    z_o = 0 # z focus position in um
+    r_min = -r # um
+    r_max = r+ 50 # um
+    r_nBins = 50
+    z_min = 0. # um
+    z_max = 1300 # um
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     z_nBins = 130
 
     my_pro = ProjGrid(r_min, r_max, r_nBins, z_max, z_min, z_nBins, z_o)
@@ -1026,6 +1162,10 @@ def Nocarrier(r, rlen, zlen):
     carriergeneration = SPAGeneration()
     CGrid = carriergeneration.getCarrierDensity(rGrid, zGrid, z_o*1e-6)
     xGrid = rGrid.copy()
+<<<<<<< HEAD
+=======
+    yGrid = rGrid.copy()
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     projGrid = CGrid.copy()
     
     for i_z in range(z_nBins):
@@ -1044,9 +1184,13 @@ def Nocarrier(r, rlen, zlen):
 ### get the 2D TCT simulation basics information
 def twoD_TCT(model="PIN"):
     ### define the structure of the detector
+<<<<<<< HEAD
     rlen = 50
     zlen = 1300
     my_detector = R2dDetector(zlen, rlen)
+=======
+    my_detector = R2dDetector(1300,50)
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_detector.mesh_step(10,10)
     my_detector.set_para(doping=-10,voltage=-200,temperature=300)
     ### get the electric field and weighting potential
@@ -1059,6 +1203,7 @@ def twoD_TCT(model="PIN"):
     else:
         raise NameError(model)
     
+<<<<<<< HEAD
     cvmin = ROOT.TCanvas("cvmin", "canvas1", 200, 10, 1000, 1000)
     mg = ROOT.TMultiGraph("mg","")
     x_array=array('f')
@@ -1105,6 +1250,28 @@ def twoD_TCT(model="PIN"):
         del y_array[:]
     mg.Draw("APL")
     cvmin.SaveAs("vmin.pdf")
+=======
+    nocarrier = Nocarrier(25)    #Input the position of the laser
+    my_field.fenics_p_electric(my_detector) 
+    my_field.fenics_p_w_electric(my_detector)
+    my_field.change_data_form(my_detector)
+    my_field.cal_field(my_detector)
+    ### define the tracks and type of incident particles
+    my_track = TCTTracks()
+    my_track.t_mip(130,50,nocarrier)
+    ### drift of ionized particles
+    my_drift = TCTDrifts(my_track)
+    my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
+    ### after the electronics
+    my_electronics = Amplifier()
+    qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
+    ### matlab plot and show
+    my_plot = Matplt()
+    my_plot.plot_basic_info(my_field,my_drift)
+    ### root plot
+    TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
+    draw_nocarrier(my_track,nocarrier)
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
 
 ### get the 2D simulation basics information
 def twoD_time(model="PIN"):
@@ -1121,6 +1288,10 @@ def twoD_time(model="PIN"):
 
     else:
         raise NameError(model)
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_field.fenics_p_electric(my_detector) 
     my_field.fenics_p_w_electric(my_detector)
     my_field.change_data_form(my_detector)
