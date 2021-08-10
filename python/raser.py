@@ -25,11 +25,7 @@ class R2dDetector:
         self.d_neff = doping #dopingX1e12 cm^-3
         self.v_voltage = voltage #Voltage
         self.temperature = temperature #Temperature
-<<<<<<< HEAD
         self.n_bin = 1000    #or 100 or 3000
-=======
-        self.n_bin = 3000    #or 100 or 3000
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
         self.t_end = 2e-9
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
@@ -857,7 +853,6 @@ def draw_plot(my_detector,ele_current,qtot,my_drift):
         / my_detector.sum_cu.GetNbinsX()) * 1e15
     #print(charge_t)
     #print(qtot*1e15)
-<<<<<<< HEAD
     my_drift.draw_drift_path()
 
 
@@ -927,8 +922,6 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
         / my_detector.sum_cu.GetNbinsX()) * 1e15
     print(charge_t)
     print(qtot*1e15)
-=======
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_drift.draw_drift_path()
 
     elecu = [ []for n in range(ele_current.GetNbinsX())]
@@ -1138,7 +1131,6 @@ class Matplt:
         plt.savefig("test_electric.pdf")
         # plt.show()
 
-<<<<<<< HEAD
 def Nocarrier(r, rlen, zlen):
     z_o = 0 # z focus position in um
     r_min = -r # um
@@ -1146,15 +1138,6 @@ def Nocarrier(r, rlen, zlen):
     r_nBins = 50
     z_min = 0. # um
     z_max = zlen # um
-=======
-def Nocarrier(r):
-    z_o = 0 # z focus position in um
-    r_min = -r # um
-    r_max = r+ 50 # um
-    r_nBins = 50
-    z_min = 0. # um
-    z_max = 1300 # um
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     z_nBins = 130
 
     my_pro = ProjGrid(r_min, r_max, r_nBins, z_max, z_min, z_nBins, z_o)
@@ -1162,10 +1145,6 @@ def Nocarrier(r):
     carriergeneration = SPAGeneration()
     CGrid = carriergeneration.getCarrierDensity(rGrid, zGrid, z_o*1e-6)
     xGrid = rGrid.copy()
-<<<<<<< HEAD
-=======
-    yGrid = rGrid.copy()
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     projGrid = CGrid.copy()
     
     for i_z in range(z_nBins):
@@ -1184,13 +1163,9 @@ def Nocarrier(r):
 ### get the 2D TCT simulation basics information
 def twoD_TCT(model="PIN"):
     ### define the structure of the detector
-<<<<<<< HEAD
     rlen = 50
     zlen = 1300
     my_detector = R2dDetector(zlen, rlen)
-=======
-    my_detector = R2dDetector(1300,50)
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_detector.mesh_step(10,10)
     my_detector.set_para(doping=-10,voltage=-200,temperature=300)
     ### get the electric field and weighting potential
@@ -1203,7 +1178,6 @@ def twoD_TCT(model="PIN"):
     else:
         raise NameError(model)
     
-<<<<<<< HEAD
     cvmin = ROOT.TCanvas("cvmin", "canvas1", 200, 10, 1000, 1000)
     mg = ROOT.TMultiGraph("mg","")
     x_array=array('f')
@@ -1250,28 +1224,6 @@ def twoD_TCT(model="PIN"):
         del y_array[:]
     mg.Draw("APL")
     cvmin.SaveAs("vmin.pdf")
-=======
-    nocarrier = Nocarrier(25)    #Input the position of the laser
-    my_field.fenics_p_electric(my_detector) 
-    my_field.fenics_p_w_electric(my_detector)
-    my_field.change_data_form(my_detector)
-    my_field.cal_field(my_detector)
-    ### define the tracks and type of incident particles
-    my_track = TCTTracks()
-    my_track.t_mip(130,50,nocarrier)
-    ### drift of ionized particles
-    my_drift = TCTDrifts(my_track)
-    my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
-    ### after the electronics
-    my_electronics = Amplifier()
-    qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    ### matlab plot and show
-    my_plot = Matplt()
-    my_plot.plot_basic_info(my_field,my_drift)
-    ### root plot
-    TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
-    draw_nocarrier(my_track,nocarrier)
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
 
 ### get the 2D simulation basics information
 def twoD_time(model="PIN"):
@@ -1288,10 +1240,6 @@ def twoD_time(model="PIN"):
 
     else:
         raise NameError(model)
-<<<<<<< HEAD
-=======
-    
->>>>>>> 18986e52e19cb5f9d3056dd82ba66d24796cf420
     my_field.fenics_p_electric(my_detector) 
     my_field.fenics_p_w_electric(my_detector)
     my_field.change_data_form(my_detector)
