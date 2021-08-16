@@ -1295,7 +1295,7 @@ def twoD_time_scan(output,numbers,t_numbers,step_n,change_para,sensor_model):
             x_v = 2500.
             y_v = 2500.
             # # ### after the electronics
-            CSA_par = {'t_rise':0.7,'t_fall':1.1,'trans_imp':38,'CDet':30}  #CSA sensor parameters
+            CSA_par = {'t_rise':0.4,'t_fall':0.2,'trans_imp':38,'CDet':30}  #CSA sensor parameters
             BB_par = {'BBW':0.66,'BBGain':19500,'BB_imp':10,'OscBW':2}
             my_electronics = Amplifier(my_detector,CSA_par,BB_par)
             #my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10,CDet=66)
