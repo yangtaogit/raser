@@ -1356,8 +1356,8 @@ def threeD_time_scan(output,numbers,t_numbers,step_n,change_para,sensor_model):
     del c
     save_charge(charge_t,qtot,x_v,y_v,output_path)
 
-def main():
-    args = sys.argv[1:]
+def main(args):
+    #args = sys.argv[1:]
     model = args[0]
     if model == "2D":
         geant_vis = args[1]
@@ -1384,7 +1384,8 @@ def main():
 if __name__ == '__main__':
     #record run time
     starttime = time.time()   
-    main() 
+    #main() 
+    main(sys.argv[1:]) 
     endtime=time.time()
     dtime = endtime-starttime
     print ("the process run time %.8s s" %dtime)

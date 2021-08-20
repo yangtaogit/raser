@@ -53,7 +53,8 @@ sub_0_1(){
 time_2D=2021_8_13_two_ele
 case $option in 
     0.1.1) echo "raser 2D SiC basic information..."
-        python3 python/raser_3D.py 2D  1
+        #python3 python/raser_3D.py 2D  1
+        ./python/raser.py 3D 2D 1    
         ;;
     0.1.2) echo "batch model"
         python3 python/run_job.py 2000 10000 -500 0
