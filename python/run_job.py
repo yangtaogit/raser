@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -17,7 +18,7 @@ def main():
     for i in range(n):
         e_number=n_number*(i+1)
         print(e_number)
-        os.system('singularity exec instance://instance%s ./run 0.1.3 %s %s %s %s &' %(i,e_number,t_number,n_number,change_p))
+        os.system('singularity exec instance://instance%s ./run 0.1.3 %s %s %s &' %(i,e_number,n_number,change_p))
         time.sleep(1)
 if __name__ == '__main__':
     main()

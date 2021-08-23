@@ -81,13 +81,13 @@ class Fenics_cal:
         perm0 = 8.854187817e-12   #F/m
         self.f_value = e0*my_d.d_neff*1e6/perm0/perm_sic*FACTOR_UNIT*FACTOR_UNIT
         self.tol = 1e-14
+        m_sensor =  mshr.Box(fenics.Point(0, 0, 0), fenics.Point(self.fl_x, self.fl_y, self.fl_z))
         #fenics space        
         if self.model == "3D":
             for i in range(len(my_d.e_tr)):
                 e_t_i = my_d.e_tr[i]
                 elec_n=mshr.Cylinder(fenics.Point(e_t_i[0], e_t_i[1], e_t_i[3]), fenics.Point(e_t_i[0], e_t_i[1], e_t_i[4]),e_t_i[2],e_t_i[2])
-                m_sensor =m_sensor - elec_n
-        m_sensor =  mshr.Box(fenics.Point(0, 0, 0), fenics.Point(self.fl_x, self.fl_y, self.fl_z))
+                m_sensor =m_sensor - elec_n       
         self.mesh3D = mshr.generate_mesh(m_sensor,mesh_v)  
         self.V = fenics.FunctionSpace(self.mesh3D, 'P', 1)
 
@@ -181,7 +181,7 @@ class Fenics_cal:
 #Geant4 for particle drift path
 class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
     "My Detector Construction"
-    def __init__(self,my_detector,maxStep):
+    def __init__(self,my_detector,sensor_model,maxStep):
         g4b.G4VUserDetectorConstruction.__init__(self)
         self.solid = {}
         self.logical = {}
@@ -193,7 +193,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = my_detector.l_x*g4b.um,
             sidey = my_detector.l_y*g4b.um,
             sidez = 10*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,15000*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,15000*g4b.um],
             material_type = "G4_Al",
             colour = [1,0.1,0.8],
             mother = 'world'
@@ -203,7 +203,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 1300*g4b.um,
             sidey = 1300*g4b.um,
             sidez = 33*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,10000*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,10000*g4b.um],
             material_type = "G4_Si",
             colour = [1,1,1],
             mother = 'world'
@@ -213,7 +213,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 1300*g4b.um,
             sidey = 1300*g4b.um,
             sidez = 300*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,9833.5*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,9833.5*g4b.um],
             material_type = "G4_Si",
             colour = [0,0,1],
             mother = 'world'
@@ -223,7 +223,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 20000*g4b.um,
             sidey = 20000*g4b.um,
             sidez = 1500*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,8933.5*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,8933.5*g4b.um],
             tub_radius = 500*g4b.um,
             tub_depth = 1500*g4b.um,
             material_Si = "Si",
@@ -237,30 +237,19 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = my_detector.l_x*g4b.um,
             sidey = my_detector.l_y*g4b.um,
             sidez = my_detector.l_z*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,my_detector.l_z/2.0*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,my_detector.l_z/2.0*g4b.um],
             material_Si = "Si",
             material_c = "C",
             colour = [1,0,0],
             mother = 'world'
             )
-
-        self.create_sic_box(
-            name = "SiC_sub",
-            sidex = my_detector.l_x*g4b.um,
-            sidey = my_detector.l_y*g4b.um,
-            sidez = 350.0*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,-175.0*g4b.um],
-            material_Si = "Si",
-            material_c = "C",
-            colour = [0,1,1],
-            mother = 'world'
-            )
-        self.create_pcb_board(
+        if "3D" in sensor_model:
+            self.create_pcb_board(
             name = "pcb2",
             sidex = 20000*g4b.um,
             sidey = 20000*g4b.um,
             sidez = 1500*g4b.um,
-            translation = [my_detector.l_x/2.0*g4b.um,my_detector.l_y/2.0*g4b.um,-1100*g4b.um],
+            translation = [0.0*g4b.um,0.0*g4b.um,-750*g4b.um],
             tub_radius = 500*g4b.um,
             tub_depth = 1500*g4b.um,
             material_Si = "Si",
@@ -268,6 +257,36 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             colour = [0,0.5,0.8],   
             mother = 'world'
             )
+        elif "2D" in sensor_model:
+            self.create_sic_box(
+            name = "SiC_sub",
+            sidex = my_detector.l_x*g4b.um,
+            sidey = my_detector.l_y*g4b.um,
+            sidez = 350.0*g4b.um,
+            translation = [0.0*g4b.um,0.0*g4b.um,-175.0*g4b.um],
+            material_Si = "Si",
+            material_c = "C",
+            colour = [0,1,1],
+            mother = 'world'
+            )
+            self.create_pcb_board(
+            name = "pcb2",
+            sidex = 20000*g4b.um,
+            sidey = 20000*g4b.um,
+            sidez = 1500*g4b.um,
+            translation = [0.0*g4b.um,0.0*g4b.um,-1100.0*g4b.um],
+            tub_radius = 500*g4b.um,
+            tub_depth = 1500*g4b.um,
+            material_Si = "Si",
+            material_O = "O",
+            colour = [0,0.5,0.8],   
+            mother = 'world'
+            )
+        else:
+            print("sensor model is wrrong")
+            sys.exit()
+
+
         self.maxStep = maxStep
         self.fStepLimit = g4b.G4UserLimits(self.maxStep)
         self.logical["Device"].SetUserLimits(self.fStepLimit)
@@ -1239,121 +1258,121 @@ def save_charge(charge_t,qtot,x_v,y_v,output_path):
     with open(output_path+'.txt','a') as f:
         f.write(str(x_v)+','+str(y_v)+','+str(charge_t)+','+str(qtot)+'\n')
 
-def threeD_time(sensor_model,geant_vis):
-    ### define the structure of the detector
-    my_detector = R3dDetector(5000.0,5000.0,100.0)
-    my_detector.set_para(doping=10.0,voltage=-500.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
-    if sensor_model == "3D":
-        my_detector.set_3D_electrode(5.0,40.0)
-    ### get the electric field and weighting potential
-    my_field = Fenics_cal(my_detector,sensor_model,mesh_v=32,scale_xy=50)
+### time resolution common work flow
+
+# structure
+def detector_structure(sensor_model):
+    if "3D" in sensor_model:
+        my_detector = R3dDetector(10000.0,10000.0,350.0)
+        my_detector.set_para(doping=10.0,voltage=-300.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+        my_detector.set_3D_electrode(e_ir=51.0,e_gap=150.0)   #e_ir the radius of electrode e_gap is the spacing between the gaps
+    elif "2D" in sensor_model:
+        my_detector = R3dDetector(5000.0,5000.0,100.0)
+        my_detector.set_para(doping=10.0,voltage=-500.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+    else:
+        print("sensor model is wrrong")
+        sys.exit()
+    return my_detector
+
+# electric field
+def fenics_electric_field(my_detector,sensor_model):
+    if "3D" in sensor_model:
+        my_field = Fenics_cal(my_detector,sensor_model,mesh_v=32,scale_xy=1)
+    elif "2D" in sensor_model:
+        my_field = Fenics_cal(my_detector,sensor_model,mesh_v=32,scale_xy=50)
+    else:
+        print("sensor model is wrrong")
+        sys.exit()
     my_field.fenics_p_electric(my_detector) 
     my_field.fenics_p_w_electric(my_detector)
+    return my_field
 
-    # ### Geant4 get drift path
-    par_position = [2500.,2500.,17000.]
-    par_out = [2500.,2500.,0.]
+# particles 
+def particles_source(my_detector,geant_vis,sensor_model,seed=100,sub_stepn=100):
+    par_position = [-75,0,17000.]  # incident position
+    par_out = [-75,0,0.]           # exit position
     par_direction = [par_out[0]-par_position[0],par_out[1]-par_position[1],par_out[2]-par_position[2]]
-    my_g4d = MyDetectorConstruction(my_detector,maxStep=0.5*g4b.um)
-    seed = random.randint(0,10000)
-
+    my_g4d = MyDetectorConstruction(my_detector,sensor_model,maxStep=0.5*g4b.um)
     my_g4v = Geant4()
-    my_g4v.geant_run(my_g4d,par_position,par_direction,seed,100,geant_vis)
-    # # # # ### drift of ionized particles
-    my_drift = Drifts(my_g4v,0)
+    if "scan" in sensor_model:
+        my_g4v.geant_run(my_g4d,par_position,par_direction,seed,sub_stepn,0) 
+    else:
+        seed = random.randint(0,10000)
+        my_g4v.geant_run(my_g4d,par_position,par_direction,seed,sub_stepn,geant_vis)
+    return my_g4v
+
+# particles drift
+def particles_drift(my_g4v,my_field,my_detector,n_particle=0):
+    my_drift = Drifts(my_g4v,n_particle)
     my_drift.ionized_drift(my_g4v,my_field,my_detector)
+    return my_drift
+
+# electronics
+def electronics(my_detector):
     CSA_par = {'t_rise':0.7,'t_fall':1.1,'trans_imp':38,'CDet':30}  #CSA sensor parameters
     BB_par = {'BBW':0.66,'BBGain':19500,'BB_imp':10,'OscBW':2}
-    my_electronics = Amplifier(my_detector,CSA_par,BB_par)
-    #my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10,CDet=66)
-    CSAele_current=my_electronics.CSA_amp()
-    BBele_current=my_electronics.BB_amp()
-    #charge_t,qtot=my_electronics.save_ele_scan_BB(CDet_BB_imp,BB_w,output_path)
+    my_ele = Amplifier(my_detector,CSA_par,BB_par)
 
-    # # ### electric plot
-    #draw_ele_field(my_detector,my_field,"xz",my_detector.l_z*0.5)
-    # draw_ele_field(my_detector,my_field,"xy",my_detector.l_z*0.5)
-    # draw_ele_field(my_detector,my_field,"yz",my_detector.l_z*0.5)
-    # # ###  current plot
-    draw_plot(my_detector,BBele_current,my_drift,my_field,my_g4v,drift_path=1)
-    del CSAele_current
-    del BBele_current
-    # # ### after the electronics
-    # for i in range (50):
-    #     for j in range (50):
-    #         t_rise=0.1 + 0.1*i
-    #         t_fall=0.1 + 0.1*j
-    #         # CDet_BB_imp = 100 + i*200
-    #         # BB_w = 0.16 + j*0.1
-    #         # BB_imp = CDet_BB_imp/30.0
-    #         # print("CDet_BB_imp=%s,BBw=%s"%(CDet_BB_imp,BB_w))
-    #         CSA_par = {'t_rise':t_rise,'t_fall':t_fall,'trans_imp':38,'CDet':30}  #CSA sensor parameters
-    #         BB_par = {'BBW':0.66,'BBGain':19500,'BB_imp':10,'OscBW':2}
-    #         my_electronics = Amplifier(my_detector,CSA_par,BB_par)
-    #         #my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10,CDet=66)
-    #         CSAele_current=my_electronics.CSA_amp()
-    #         BBele_current=my_electronics.BB_amp()
-    #         output_path = "out/ele_scan_CSA/"
-    #         os.system("mkdir %s -p"%(output_path))      
-    #         charge_t,qtot=my_electronics.save_ele_scan_CSA(t_rise,t_fall,output_path)
-    #         #charge_t,qtot=my_electronics.save_ele_scan_BB(CDet_BB_imp,BB_w,output_path)
-    #         del CSAele_current
-    #         del BBele_current
-    # # ### electric plot
-    #draw_ele_field(my_detector,my_field,"xz",my_detector.l_z*0.5)
-    #draw_ele_field(my_detector,my_field,"xy",my_detector.l_z*0.5)
-    # draw_ele_field(my_detector,my_field,"yz",my_detector.l_z*0.5)
-    # # ###  current plot
-    #draw_plot(my_detector,BBele_current,my_drift,my_field,my_g4v,drift_path=1)
-### get the 2D time resolution
-def twoD_time_scan(output,numbers,t_numbers,step_n,change_para,sensor_model):
-    ## define the structure of the detector
-    print(change_para)
-    my_detector = R3dDetector(5000.,5000.,100.)
-    my_detector.set_para(doping=10,voltage=change_para,temperature=300)
-    #N-type is  positive and P-type is negetive, doping /um^3 
-    if sensor_model == "3D_scan":
-        my_detector.set_3D_electrode(5.0,40.0)
-    ### get the electric field and weighting potential
-    my_field = Fenics_cal(my_detector,sensor_model,mesh_v=32,scale_xy=50)
-    my_field.fenics_p_electric(my_detector) 
-    my_field.fenics_p_w_electric(my_detector)
-    par_position = [2500.,2500.,17000.]
-    par_out = [2500.,2500.,0.]
-    par_direction = [par_out[0]-par_position[0],par_out[1]-par_position[1],par_out[2]-par_position[2]]
-    my_g4d = MyDetectorConstruction(my_detector,maxStep=0.5*g4b.um)
-    my_g4v = Geant4()
-    my_g4v.geant_run(my_g4d,par_position,par_direction,numbers-step_n,step_n,0) 
-    # print(my_g4v.myRA.p_steps)
-    # print(len(my_g4v.myRA.p_steps))
+    return my_ele
+# save and draw data
+
+def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output="test",change_para=100):
+    CSA_cur=my_ele.CSA_amp()
+    BB_cur=my_ele.BB_amp()
+    i=1
+    if "3D" in sensor_model:
+        x_v=5000
+        y_v=5000
+    elif "2D" in sensor_model:
+        x_v=2500
+        y_v=2500
+    else:
+        print("sensor model is wrrong")
+        sys.exit()        
+    if "scan" in sensor_model:
+        print("change_para:%s"%change_para)
+        output_path = output + "/voltage_"+str(abs(change_para))
+        os.system("mkdir %s -p"%(output_path))      
+        charge_t,qtot=my_ele.save_ele(i,x_v,y_v,output_path)
+        save_charge(charge_t,qtot,x_v,y_v,output_path)
+    else:
+        draw_ele_field(my_detector,my_field,"xz",my_detector.l_z*0.5)
+        draw_ele_field(my_detector,my_field,"xy",my_detector.l_z*0.5)
+        draw_ele_field(my_detector,my_field,"yz",my_detector.l_z*0.5)
+        draw_plot(my_detector,BB_cur,my_drift,my_field,my_g4v,drift_path=1)
+
+    del CSA_cur
+    del BB_cur
+
+#main process 2D or 3D single event
+def threeD_time(sensor_model,geant_vis):
+
+    my_detector=detector_structure(sensor_model)                ### define the structure of the detector   
+    my_field=fenics_electric_field(my_detector,sensor_model)    ### get the electric field and weighting potential   
+    my_g4v=particles_source(my_detector,geant_vis,sensor_model) ### particles source   
+    my_drift=particles_drift(my_g4v,my_field,my_detector)       ### drift of ionized particles   
+    my_ele=electronics(my_detector)                             ### readout electronics   
+    save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v) ### save and draw data
+
+### scan 2D to get  time resolution
+def twoD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0):
+
+    my_detector=detector_structure(sensor_model)                ### define the structure of the detector   
+    my_field=fenics_electric_field(my_detector,sensor_model)    ### get the electric field and weighting potential   
+    my_g4v=particles_source(my_detector,geant_vis,sensor_model,seed=numbers-step_n,sub_stepn=step_n) ### particles source   
+    
     for i in range(numbers-step_n,numbers): 
         print("event number:%s"%i)
-        if len(my_g4v.p_steps[i-numbers+step_n])>5:       
-            # # # ### drift of ionized particles
-            my_drift = Drifts(my_g4v,i-numbers+step_n)
-            my_drift.ionized_drift(my_g4v,my_field,my_detector)
-            x_v = 2500.
-            y_v = 2500.
-            # # ### after the electronics
-            CSA_par = {'t_rise':0.4,'t_fall':0.2,'trans_imp':38,'CDet':30}  #CSA sensor parameters
-            BB_par = {'BBW':0.66,'BBGain':19500,'BB_imp':10,'OscBW':2}
-            my_electronics = Amplifier(my_detector,CSA_par,BB_par)
-            #my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10,CDet=66)
-            CSAele_current=my_electronics.CSA_amp()
-            BBele_current=my_electronics.BB_amp()
-            output_path = output + "/voltage_"+str(abs(change_para))
-            os.system("mkdir %s -p"%(output_path))      
+        if len(my_g4v.p_steps[i-numbers+step_n])>5:     
+            my_drift=particles_drift(my_g4v,my_field,my_detector,i-numbers+step_n)       ### drift of ionized particles   
+            my_ele=electronics(my_detector)                             ### readout electronics   
+            save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output,change_para) ### save and draw data
 
-            charge_t,qtot=my_electronics.save_ele(i,x_v,y_v,output_path)
-            save_charge(charge_t,qtot,x_v,y_v,output_path)
-            del CSAele_current
-            del BBele_current
-
-### get the 3D time resolution
-def threeD_time_scan(output,numbers,t_numbers,step_n,change_para,sensor_model):
+### scan 3D to get  time resolution
+def threeD_time_scan(output,numbers,step_n,change_para,sensor_model):
     ## define the structure of the detector
     print(change_para)
-    my_detector = R3dDetector(100.,100.,100.)
+    my_detector = R3dDetector(5000.,5000.,300.)
     my_detector.set_para(doping=10,voltage=-500,temperature=300)
     #N-type is  positive and P-type is negetive, doping /um^3 
     if sensor_model == "3D_scan":
@@ -1396,35 +1415,34 @@ def threeD_time_scan(output,numbers,t_numbers,step_n,change_para,sensor_model):
     del c
     save_charge(charge_t,qtot,x_v,y_v,output_path)
 
-def main():
-    args = sys.argv[1:]
+def main(args):
+
     model = args[0]
-    if model == "2D":
+    if model == "2D" or "3D":
         geant_vis = args[1]
-        threeD_time("2D",geant_vis)
-    if model == "3D":
-        geant_vis = args[1]
-        threeD_time("3D",geant_vis)
-    if model == "3D_scan":
+        threeD_time(model,geant_vis)
+    elif "scan" in model:
         output = args[1]
         numbers = int(args[2])
-        t_numbers = int(args[3])
-        n_step = int(args[4])
-        change_para = float(args[5])
-        threeD_time_scan(output,numbers,t_numbers,n_step,change_para,model)
-    if model == "2D_scan":
-        output = args[1]
-        numbers = int(args[2])
-        t_numbers = int(args[3])
-        step_n = int(args[4])
-        change_para = float(args[5])
-        twoD_time_scan(output,numbers,t_numbers,step_n,change_para,model)
+        n_step = int(args[3])
+        change_para = float(args[4])
+        if model == "3Dscan":
+            threeD_time_scan(output,numbers,n_step,change_para,model)
+        elif model == "2D_scan":
+            twoD_time_scan(output,numbers,n_step,change_para,model)
+        else:
+            print("sensor model is wrrong")
+            sys.exit()
+    else:
+        print("sensor model is wrrong")
+        sys.exit()
     print("run end")
     
 if __name__ == '__main__':
     #record run time
     starttime = time.time()   
-    main() 
+    #main() 
+    main(sys.argv[1:]) 
     endtime=time.time()
     dtime = endtime-starttime
     print ("the process run time %.8s s" %dtime)
