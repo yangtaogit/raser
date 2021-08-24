@@ -81,20 +81,62 @@ class Fenics_cal:
         perm0 = 8.854187817e-12   #F/m
         self.f_value = e0*my_d.d_neff*1e6/perm0/perm_sic*FACTOR_UNIT*FACTOR_UNIT
         self.tol = 1e-14
-        m_sensor =  mshr.Box(fenics.Point(0, 0, 0), fenics.Point(self.fl_x, self.fl_y, self.fl_z))
+        
         #fenics space        
-        if self.model == "3D":
+        if "3D" in self.model:
+            Fenics_cal.sensor_range_confirm(self,my_d)
+            m_sensor =  mshr.Box(fenics.Point(self.sx_l,self.sy_l, 0), fenics.Point(self.sx_r, self.sy_r, self.fl_z))
             for i in range(len(my_d.e_tr)):
                 e_t_i = my_d.e_tr[i]
                 elec_n=mshr.Cylinder(fenics.Point(e_t_i[0], e_t_i[1], e_t_i[3]), fenics.Point(e_t_i[0], e_t_i[1], e_t_i[4]),e_t_i[2],e_t_i[2])
-                m_sensor =m_sensor - elec_n       
+                m_sensor =m_sensor - elec_n 
+        elif "2D" in self.model:
+            m_sensor =  mshr.Box(fenics.Point(0, 0, 0), fenics.Point(self.fl_x, self.fl_y, self.fl_z))
+        else:
+            print("sensor model is wrrong")
+            sys.exit()                  
         self.mesh3D = mshr.generate_mesh(m_sensor,mesh_v)  
         self.V = fenics.FunctionSpace(self.mesh3D, 'P', 1)
+    #confirm the sensor range at x,y axias to avoide the the big sensor size
+    #which will lead to the mesh complicate
+    def sensor_range_confirm(self,my_d):
+        xv_list=[]
+        yv_list=[]
+        rest_length=50 #um
+        length=0
+        for i in range(len(my_d.e_tr)):
+            e_t_i = my_d.e_tr[i]
+            xv_list.append(e_t_i[0])
+            yv_list.append(e_t_i[1])
+            ele_radius= e_t_i[2]
+        while length == 0:
+            xv_max = max(xv_list)+ele_radius+rest_length # sensor electric field max value
+            xv_min = min(xv_list)-ele_radius-rest_length # sensor electric field min value
+            yv_max = max(yv_list)+ele_radius+rest_length # sensor electric field max value
+            yv_min = min(yv_list)-ele_radius-rest_length # sensor electric field min value
+            if xv_max >= yv_max:
+                yv_max = xv_max
+            else:
+                xv_max = yv_max
+            if xv_min <= yv_min:
+                yv_min = xv_min
+            else:
+                xv_min = yv_min
+            if xv_max > my_d.l_x or xv_min <0 or yv_max > my_d.l_y or yv_min < 0:
+                rest_length -= 1
+            else:
+                length=1
+        self.sx_l=xv_min #fenics sensor x left value
+        self.sx_r=xv_max #fenics sensor x right value
+        self.sy_l=yv_min #fenics sensor y left value
+        self.sy_r=yv_max #fenics sensor y right value       
+                
 
     def fenics_p_electric(self,my_d):    #get the electric potential
         # Define boundary condition
-        if self.model == "3D":
+        if  "3D" in self.model:
             bc_u=[]
+            #define electrodes
             for i in range (len(my_d.e_tr)):
                 e_t_i = my_d.e_tr[i]
                 str_e =  "x[0]>={elec_1_0}-{elec_1_2} && x[0]<={elec_1_0}+"+\
@@ -106,6 +148,14 @@ class Fenics_cal:
                 else:
                     bc = fenics.DirichletBC(self.V, 0.0, elec_p)
                 bc_u.append(bc)
+            # #define boundary
+            # str_e = "x[0]<{elec_2_0}-{elec_1_2} || x[0]>{elec_3_0}+"+\
+            #         "{elec_1_2} || x[1]<{elec_6_1}-{elec_1_2} || "+\
+            #         "x[1]>{elec_4_1}+{elec_1_2}"
+            # elec_p = str_e.format(elec_2_0=my_d.e_tr[1][0],elec_3_0=my_d.e_tr[2][0],elec_4_1=my_d.e_tr[3][1],elec_6_1=my_d.e_tr[5][1],elec_1_2=my_d.e_tr[6][2])
+            # bc = fenics.DirichletBC(self.V, 0.0, elec_p)
+            # bc_u.append(bc)
+            
         else:
             u_D = fenics.Expression('x[2] < tol? det_voltage : 0', degree=2,tol=1E-14,det_voltage=my_d.v_voltage)
             def boundary(x, on_boundary):
@@ -125,7 +175,7 @@ class Fenics_cal:
 
     def fenics_p_w_electric(self,my_d):  #get the electric weighting potential
         #####Laplace's equation
-        if self.model == "3D":
+        if  "3D" in self.model:
             bc_w=[]
             for i in range (len(my_d.e_tr)):
                 e_t_i = my_d.e_tr[i]
@@ -154,30 +204,53 @@ class Fenics_cal:
         fenics.solve(a_w == L_w, self.u_w, bc_w)
 
     def get_e_field(self,px,py,pz):
-        scale_px=px%self.fl_x
-        scale_py=py%self.fl_y             
-        try:
-            x_value,y_value,z_value = self.E_field(scale_px,scale_py,pz)
-        except RuntimeError:
+        out_range=Fenics_cal.judge_fenics_range(self,px,py,pz)
+        if out_range == 1:   #px,py,pz don't exit in sensor fenics range
             x_value,y_value,z_value = 0,0,0
+        else:
+            scale_px=px%self.fl_x
+            scale_py=py%self.fl_y          
+            try:
+                x_value,y_value,z_value = self.E_field(scale_px,scale_py,pz)
+            except RuntimeError:
+                x_value,y_value,z_value = 0,0,0
         return x_value,y_value,z_value
 
     def get_w_p(self,px,py,pz):
-        scale_px=px%self.fl_x
-        scale_py=py%self.fl_y   
-        try:
-            f_w_p = self.u_w(scale_px,scale_py,pz)
-        except RuntimeError:
-            f_w_p = 0.0
+        out_range=Fenics_cal.judge_fenics_range(self,px,py,pz)
+        if out_range == 1:   #px,py,pz don't exit in sensor fenics range
+            f_w_p = 1.0
+        else:
+            scale_px=px%self.fl_x
+            scale_py=py%self.fl_y   
+            try:
+                f_w_p = self.u_w(scale_px,scale_py,pz)
+            except RuntimeError:
+                f_w_p = 0.0
         return f_w_p
+
     def get_potential(self,px,py,pz):
-        scale_px=px%self.fl_x
-        scale_py=py%self.fl_y   
-        try:
-            f_w_p = self.u(scale_px,scale_py,pz)
-        except RuntimeError:
-            f_w_p = 0.0
+        out_range=Fenics_cal.judge_fenics_range(self,px,py,pz)
+        if out_range == 1:   #px,py,pz don't exit in sensor fenics range
+            f_w_p = 0
+        else:
+            scale_px=px%self.fl_x
+            scale_py=py%self.fl_y   
+            try:
+                f_w_p = self.u(scale_px,scale_py,pz)
+            except RuntimeError:
+                f_w_p = 0.0
         return f_w_p
+
+    def judge_fenics_range(self,px,py,pz):
+        if "3D" in self.model:
+            if px < self.sx_l or px > self.sx_r  or py < self.sy_l or py > self.sy_r:
+                out_range=1
+            else:
+                out_range=0
+        else:
+            out_range=0
+        return out_range
 #Geant4 for particle drift path
 class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
     "My Detector Construction"
@@ -619,11 +692,15 @@ class Drifts:
         self.d_dic_p = {}
         if i == 0:
             for j in range(len(my_g4v.p_steps)):
-                if len(my_g4v.p_steps[j])>5:
+                if len(my_g4v.p_steps[j])>5 and i == 0:
                     self.beam_number = j
                     self.tracks_p = my_g4v.p_steps[j]
                     self.tracks_step_edep = my_g4v.energy_steps[j]
-                    self.tracks_t_edep = my_g4v.edep_devices[j]            
+                    self.tracks_t_edep = my_g4v.edep_devices[j]
+                    i+=1
+            if i == 0:
+                print("the sensor did have the hit particles")
+                sys.exit()            
         else:
             self.beam_number = i
             self.tracks_p = my_g4v.p_steps[i]
@@ -795,13 +872,16 @@ class Drifts:
                 self.d_y=self.tracks_p[i+1][1]
                 self.d_z=self.tracks_p[i+1][2] 
                 while (self.end_cond==0):
+                    self.e_field = np.array(my_f.get_e_field(self.d_x,self.d_y,self.d_z))
                     if (self.d_y>=(my_d.l_y-1.0/FACTOR_UNIT) or self.d_x>=(my_d.l_x-1.0/FACTOR_UNIT) or self.d_z>=(my_d.l_z-1.0/FACTOR_UNIT)):
                         self.end_cond=3  
-                    if (self.d_y<=(1.0/FACTOR_UNIT) or self.d_x<=(1.0/FACTOR_UNIT) or self.d_z<=(1.0/FACTOR_UNIT)):
-                        self.end_cond=3  
+                    elif (self.d_y<=(1.0/FACTOR_UNIT) or self.d_x<=(1.0/FACTOR_UNIT) or self.d_z<=(1.0/FACTOR_UNIT)):
+                        self.end_cond=8                    
+                    elif (self.e_field[0]==0 and self.e_field[1]==0 and self.e_field[1]==0):
+                        self.end_cond=9
                     else:                                     
                         # field of the position
-                        self.e_field = np.array(my_f.get_e_field(self.d_x,self.d_y,self.d_z))
+                        #self.e_field = np.array(my_f.get_e_field(self.d_x,self.d_y,self.d_z))
                         #delta_poisiton
                         Drifts.delta_p(self)
                         #drift_position
@@ -841,9 +921,10 @@ class Drifts:
                     y_v = (j+1)*(my_d.l_y/ny_e)
                     z_v = (k+1)*(my_d.l_z/nz_e)
                     try:
-                        x_value,y_value,z_value = my_f.get_e_field(x_v,y_v,z_v)
+                        x_value,y_value,z_value = my_f.get_e_field(x_v,y_v,z_v)                       
                         structrue.SetBinContent(i+1,j+1,k+1,0)
                     except RuntimeError:
+                        print("test:%s,%s,%s"%(x_value,y_value,z_value))
                         structrue.SetBinContent(i+1,j+1,k+1,2)
         structrue.Draw("ISO")
         mg = ROOT.TMultiGraph("mg","")
@@ -1148,13 +1229,13 @@ def draw_plot(my_detector,ele_current,my_drift,my_field,my_g4v,drift_path):
     h1.Draw()
     c1.SaveAs("fig/dep_SiC_energy.root")
 
-
+    n_bin=[int(my_detector.l_x),int(my_detector.l_y),int(my_detector.l_z)]
     if drift_path == 1:
-        my_drift.draw_drift_path(my_detector,my_field,[100,100,100])
+        my_drift.draw_drift_path(my_detector,my_field,n_bin)
     
     
 
-def draw_ele_field(my_d,my_f,plane,depth):
+def draw_ele_field(my_d,my_f,plane,sensor_model,depth):
 
     c1 = ROOT.TCanvas("c", "canvas",1000, 1000)
     ROOT.gStyle.SetOptStat(ROOT.kFALSE)
@@ -1167,19 +1248,19 @@ def draw_ele_field(my_d,my_f,plane,depth):
     c1.GetPad(2).SetRightMargin(0.2)
     c1.GetPad(3).SetRightMargin(0.2)
     c1.cd(1)
-    e_field=fill_his("E",depth,my_d,my_f,plane)
+    e_field=fill_his("E",depth,my_d,my_f,plane,sensor_model)
     # ROOT.gStyle.SetPalette(107)
     e_field.Draw("COLZ")
     # e_field.SetMaximum(1)
     # e_field.SetMinimum(0)    
     c1.Update()
     c1.cd(2)
-    p_field=fill_his("P",depth,my_d,my_f,plane)
+    p_field=fill_his("P",depth,my_d,my_f,plane,sensor_model)
     p_field.Draw("COLZ")
     c1.SetRightMargin(0.12)
     c1.Update()
     c1.cd(3)
-    w_p_field=fill_his("WP",depth,my_d,my_f,plane)
+    w_p_field=fill_his("WP",depth,my_d,my_f,plane,sensor_model)
     w_p_field.Draw("COLZ")
     c1.SetRightMargin(0.12)
     c1.Update()
@@ -1187,25 +1268,52 @@ def draw_ele_field(my_d,my_f,plane,depth):
     print("test2")
     del c1
 
-def fill_his(model,depth,my_d,my_f,plane):
-
-    if plane == "xy":
-        l_x = my_d.l_x
-        l_y = my_d.l_y
-        t_name = plane + " at z = " + str(depth)
-    elif plane == "yz":
-        l_x = my_d.l_y
-        l_y = my_d.l_z
-        t_name = plane + " at x = " + str(depth)
-    elif plane == "xz":
-        l_x = my_d.l_x
-        l_y = my_d.l_z
-        t_name = plane + " at y = " + str(depth)
+def fill_his(model,depth,my_d,my_f,plane,sensor_model):
+    if "3D" in sensor_model:
+        if plane == "xy":
+            l_xl = my_f.sx_l
+            l_xr = my_f.sx_r 
+            l_yl = my_f.sy_l
+            l_yr = my_f.sy_r
+            t_name = plane + " at z = " + str(depth)
+        elif plane == "yz":
+            l_xl = my_f.sy_l
+            l_xr = my_f.sy_r 
+            l_yl = 0
+            l_yr = my_d.l_z
+            t_name = plane + " at x = " + str(depth)
+        elif plane == "xz":
+            l_xl = my_f.sx_l
+            l_xr = my_f.sx_r 
+            l_yl = 0
+            l_yr = my_d.l_z
+            t_name = plane + " at y = " + str(depth)
+        else:
+            print("the draw plane is not existing")
+    elif "2D" in sensor_model:
+        if plane == "xy":
+            l_x = my_d.l_x 
+            l_y = my_d.l_y
+            t_name = plane + " at z = " + str(depth)
+        elif plane == "yz":
+            l_x = my_d.l_y
+            l_y = my_d.l_z
+            t_name = plane + " at x = " + str(depth)
+        elif plane == "xz":
+            l_x = my_d.l_x
+            l_y = my_d.l_z
+            t_name = plane + " at y = " + str(depth)
+        else:
+            print("the draw plane is not existing")
     else:
-        print("the draw plane is not existing")
+        print("sensor model is wrrong")
+        sys.exit()         
     nx_e =200
     ny_e =200
-    e_v = ROOT.TH2F("","",nx_e,0,l_x,ny_e,0,l_y)
+    if "3D" in sensor_model:
+        e_v = ROOT.TH2F("","",nx_e,l_xl,l_xr,ny_e,l_yl,l_yr)
+    elif "2D" in sensor_model:
+        e_v = ROOT.TH2F("","",nx_e,0,l_x,ny_e,0,l_y)
     if model == "E":
         e_v.SetTitle("electric field "+t_name)
     elif model == "P":
@@ -1216,8 +1324,12 @@ def fill_his(model,depth,my_d,my_f,plane):
     # ax = plt.gca()
     for j in range (ny_e):
         for i in range(nx_e):
-            x_v = (i+1)*(l_x/nx_e)
-            y_v = (j+1)*(l_y/ny_e)
+            if "3D" in sensor_model:
+                x_v = (i+1)*((l_xr-l_xl)/nx_e)+l_xl
+                y_v = (j+1)*((l_yr-l_yl)/ny_e)+l_yl
+            elif "2D" in sensor_model:
+                x_v = (i+1)*(l_x/nx_e)
+                y_v = (j+1)*(l_y/ny_e)
             try:
                 if plane == "xy":
                     f_v = get_f_v(x_v,y_v,depth,model,my_f)
@@ -1264,7 +1376,7 @@ def save_charge(charge_t,qtot,x_v,y_v,output_path):
 def detector_structure(sensor_model):
     if "3D" in sensor_model:
         my_detector = R3dDetector(10000.0,10000.0,350.0)
-        my_detector.set_para(doping=10.0,voltage=-300.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+        my_detector.set_para(doping=10.0,voltage=-500.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
         my_detector.set_3D_electrode(e_ir=51.0,e_gap=150.0)   #e_ir the radius of electrode e_gap is the spacing between the gaps
     elif "2D" in sensor_model:
         my_detector = R3dDetector(5000.0,5000.0,100.0)
@@ -1289,8 +1401,8 @@ def fenics_electric_field(my_detector,sensor_model):
 
 # particles 
 def particles_source(my_detector,geant_vis,sensor_model,seed=100,sub_stepn=100):
-    par_position = [-75,0,17000.]  # incident position
-    par_out = [-75,0,0.]           # exit position
+    par_position = [0,0,17000.]  # incident position
+    par_out = [0,0,0.]           # exit position
     par_direction = [par_out[0]-par_position[0],par_out[1]-par_position[1],par_out[2]-par_position[2]]
     my_g4d = MyDetectorConstruction(my_detector,sensor_model,maxStep=0.5*g4b.um)
     my_g4v = Geant4()
@@ -1336,9 +1448,9 @@ def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,o
         charge_t,qtot=my_ele.save_ele(i,x_v,y_v,output_path)
         save_charge(charge_t,qtot,x_v,y_v,output_path)
     else:
-        draw_ele_field(my_detector,my_field,"xz",my_detector.l_z*0.5)
-        draw_ele_field(my_detector,my_field,"xy",my_detector.l_z*0.5)
-        draw_ele_field(my_detector,my_field,"yz",my_detector.l_z*0.5)
+        draw_ele_field(my_detector,my_field,"xz",sensor_model,my_detector.l_y*0.5)
+        draw_ele_field(my_detector,my_field,"xy",sensor_model,my_detector.l_z*0.5)
+        draw_ele_field(my_detector,my_field,"yz",sensor_model,my_detector.l_x*0.5)
         draw_plot(my_detector,BB_cur,my_drift,my_field,my_g4v,drift_path=1)
 
     del CSA_cur
