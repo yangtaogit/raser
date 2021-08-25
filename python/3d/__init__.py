@@ -1490,7 +1490,7 @@ def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,o
     if "scan" in sensor_model:
         print("change_para:%s"%change_para)
         output_path = output + "/"+change_para
-        os.system("mkdir %s -p"%(output_path))      
+        os.makedirs(output_path)    
         charge_t,qtot=my_ele.save_ele(i,x_v,y_v,output_path)
         save_charge(charge_t,qtot,x_v,y_v,output_path)
 
@@ -1529,7 +1529,6 @@ def threeD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0)
 def main(args):
 
     model = args[0]
-
     if model == "2D" or model == "3D":
         geant_vis = args[1]
         threeD_time(model,geant_vis)
@@ -1539,7 +1538,6 @@ def main(args):
         n_step = int(args[3])
         change_para = args[4]
         threeD_time_scan(output,numbers,n_step,change_para,model)
-
     else:
         print("sensor model is wrrong")
         sys.exit()

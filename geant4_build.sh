@@ -15,7 +15,8 @@ cd $HOME/geant4/build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/geant4/install  -DGEANT4_INSTALL_DATA=ON -DGEANT4_USE_OPENGL_X11=ON -DGEANT4_INSTALL_DATADIR=$HOME/geant4/data -DGEANT4_BUILD_MULTITHREADED=ON -DGEANT4_USE_QT=ON  -DGEANT4_BUILD_TLS_MODEL=global-dynamic  -DGEANT4_USE_PYTHON=ON ../src/geant4.10.07.p02  
 make -j24 
 make install 
-cd $HOME/raser-1/
+
 #install geant4_pybind
 #git clone --recursive https://github.com/HaarigerHarald/geant4_pybind
-pip install ./geant4_pybind
+# cd $HOME/raser-1/
+# pip install ./geant4_pybind
