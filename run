@@ -121,7 +121,7 @@ case $option in
 		python3 python/raser.py 2D_SiC_PIN
 		;;
 	0.3.3) echo "raser 2D PIN TCT electric field..."
-	    python3 python/raser_zhao.py 2D_LASER_SI_PIN
+	    python3 python/raser.py 2D_LASER_SI_PIN
 		;;
 		esac
 }
