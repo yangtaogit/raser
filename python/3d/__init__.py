@@ -1,5 +1,6 @@
 # import matplotlib.pyplot as plt
 from array import array
+from typing import Text
 import fenics
 import mshr
 import numpy as np
@@ -12,14 +13,12 @@ import os
 import gc
 import geant4_pybind as g4b
 
-FACTOR_SIZE = 1.0
-FACTOR_UNIT = 1.0  # only do unit transformation   cann't work now due to geant4 ?
 #define the detector parameter 
 class R3dDetector:
     def __init__(self,l_x,l_y,l_z):
-        self.l_x = l_x / FACTOR_UNIT*FACTOR_SIZE
-        self.l_y = l_y / FACTOR_UNIT*FACTOR_SIZE
-        self.l_z = l_z / FACTOR_UNIT*FACTOR_SIZE
+        self.l_x = l_x 
+        self.l_y = l_y 
+        self.l_z = l_z 
     def set_para(self,doping,voltage,temperature):
         self.d_neff = doping #dopingX1e12 cm^-3
         self.v_voltage = voltage #Voltage
@@ -33,8 +32,8 @@ class R3dDetector:
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,self.t_start,self.t_end)
         self.sum_cu = ROOT.TH1F("charge","Total Current",self.n_bin,self.t_start,self.t_end)
     def set_3D_electrode(self,e_ir,e_gap):
-        e_r = e_ir / FACTOR_UNIT * FACTOR_SIZE
-        e_int = e_gap / FACTOR_UNIT * FACTOR_SIZE
+        e_r = e_ir 
+        e_int = e_gap 
         e_t_y = R3dDetector.infor_ele(self,e_r,e_int)
         self.e_tr=[]
         self.e_t_1 = [self.l_x*0.5          ,self.l_y*0.5      ,e_r,0,self.l_z,"p"]
@@ -79,7 +78,7 @@ class Fenics_cal:
             print("material is wrong")
         e0 = 1.60217733e-19
         perm0 = 8.854187817e-12   #F/m
-        self.f_value = e0*my_d.d_neff*1e6/perm0/perm_sic*FACTOR_UNIT*FACTOR_UNIT
+        self.f_value = e0*my_d.d_neff*1e6/perm0/perm_sic
         self.tol = 1e-14
         
         #fenics space        
@@ -129,7 +128,7 @@ class Fenics_cal:
         self.sx_l=xv_min #fenics sensor x left value
         self.sx_r=xv_max #fenics sensor x right value
         self.sy_l=yv_min #fenics sensor y left value
-        self.sy_r=yv_max #fenics sensor y right value       
+        self.sy_r=yv_max #fenics sensor y right value    
                 
 
     def fenics_p_electric(self,my_d):    #get the electric potential
@@ -254,19 +253,39 @@ class Fenics_cal:
 #Geant4 for particle drift path
 class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
     "My Detector Construction"
-    def __init__(self,my_detector,sensor_model,maxStep):
+    def __init__(self,my_detector,sensor_model,my_field,maxStep):
         g4b.G4VUserDetectorConstruction.__init__(self)
         self.solid = {}
         self.logical = {}
         self.physical = {}
         self.checkOverlaps = True
         self.create_world(my_detector)
+        #3D source order: beta->sic->si
+        #2D source order: beta->Si->SiC
+        tx_all = my_detector.l_x/2.0*g4b.um
+        ty_all = my_detector.l_y/2.0*g4b.um
+        if "3D" in sensor_model:
+            tz_Si = 0*g4b.um
+            tz_device = 10000*g4b.um+my_detector.l_z/2.0*g4b.um
+            self.init_tz_device = 10000
+            tz_pcb2 = 10000*g4b.um-750*g4b.um
+            device_x = (my_field.sx_r-my_field.sx_l)*g4b.um 
+            device_y = (my_field.sy_r-my_field.sy_l)*g4b.um
+            device_z = my_detector.l_z*g4b.um
+        elif "2D" in sensor_model:
+            tz_Si = 10000*g4b.um
+            tz_device = my_detector.l_z/2.0*g4b.um
+            self.init_tz_device = 0
+            tz_pcb2 = -1100*g4b.um
+            device_x = my_detector.l_x*g4b.um 
+            device_y = my_detector.l_y*g4b.um
+            device_z = my_detector.l_z*g4b.um
         self.create_AlorSi_box(
             name = "Al",
             sidex = my_detector.l_x*g4b.um,
             sidey = my_detector.l_y*g4b.um,
             sidez = 10*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,15000*g4b.um],
+            translation = [tx_all,ty_all,15000*g4b.um],
             material_type = "G4_Al",
             colour = [1,0.1,0.8],
             mother = 'world'
@@ -276,7 +295,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 1300*g4b.um,
             sidey = 1300*g4b.um,
             sidez = 33*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,10000*g4b.um],
+            translation = [tx_all,ty_all,tz_Si],
             material_type = "G4_Si",
             colour = [1,1,1],
             mother = 'world'
@@ -286,7 +305,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 1300*g4b.um,
             sidey = 1300*g4b.um,
             sidez = 300*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,9833.5*g4b.um],
+            translation = [tx_all,ty_all,tz_Si-166.5*g4b.um],
             material_type = "G4_Si",
             colour = [0,0,1],
             mother = 'world'
@@ -296,7 +315,7 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             sidex = 20000*g4b.um,
             sidey = 20000*g4b.um,
             sidez = 1500*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,8933.5*g4b.um],
+            translation = [tx_all,ty_all,tz_Si-1066.5*g4b.um],
             tub_radius = 500*g4b.um,
             tub_depth = 1500*g4b.um,
             material_Si = "Si",
@@ -307,22 +326,21 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
 
         self.create_sic_box(
             name = "Device",
-            sidex = my_detector.l_x*g4b.um,
-            sidey = my_detector.l_y*g4b.um,
-            sidez = my_detector.l_z*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,my_detector.l_z/2.0*g4b.um],
+            sidex = device_x,
+            sidey = device_y,
+            sidez = device_z,
+            translation = [tx_all,ty_all,tz_device],
             material_Si = "Si",
             material_c = "C",
             colour = [1,0,0],
             mother = 'world'
             )
-        if "3D" in sensor_model:
-            self.create_pcb_board(
+        self.create_pcb_board(
             name = "pcb2",
             sidex = 20000*g4b.um,
             sidey = 20000*g4b.um,
             sidez = 1500*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,-750*g4b.um],
+            translation = [tx_all,ty_all,tz_pcb2],
             tub_radius = 500*g4b.um,
             tub_depth = 1500*g4b.um,
             material_Si = "Si",
@@ -330,35 +348,18 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
             colour = [0,0.5,0.8],   
             mother = 'world'
             )
-        elif "2D" in sensor_model:
+        if "2D" in sensor_model:
             self.create_sic_box(
-            name = "SiC_sub",
-            sidex = my_detector.l_x*g4b.um,
-            sidey = my_detector.l_y*g4b.um,
-            sidez = 350.0*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,-175.0*g4b.um],
-            material_Si = "Si",
-            material_c = "C",
-            colour = [0,1,1],
-            mother = 'world'
-            )
-            self.create_pcb_board(
-            name = "pcb2",
-            sidex = 20000*g4b.um,
-            sidey = 20000*g4b.um,
-            sidez = 1500*g4b.um,
-            translation = [0.0*g4b.um,0.0*g4b.um,-1100.0*g4b.um],
-            tub_radius = 500*g4b.um,
-            tub_depth = 1500*g4b.um,
-            material_Si = "Si",
-            material_O = "O",
-            colour = [0,0.5,0.8],   
-            mother = 'world'
-            )
-        else:
-            print("sensor model is wrrong")
-            sys.exit()
-
+                name = "SiC_sub",
+                sidex = my_detector.l_x*g4b.um,
+                sidey = my_detector.l_y*g4b.um,
+                sidez = 350.0*g4b.um,
+                translation = [tx_all,ty_all,-175.0*g4b.um],
+                material_Si = "Si",
+                material_c = "C",
+                colour = [0,1,1],
+                mother = 'world'
+                )
 
         self.maxStep = maxStep
         self.fStepLimit = g4b.G4UserLimits(self.maxStep)
@@ -457,6 +458,8 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
     def Construct(self): # return the world volume
         self.fStepLimit.SetMaxAllowedStep(self.maxStep)
         return self.physical['world']
+    def __del__(self):
+        print("use __del__ to delete the MyDetectorConstruction class ")
         
 class MyPrimaryGeneratorAction(g4b.G4VUserPrimaryGeneratorAction):
     "My Primary Generator Action"
@@ -632,6 +635,10 @@ class Geant4:
         self.p_steps=s_p_steps
         self.energy_steps=s_energy_steps
         self.edep_devices=s_edep_devices
+        self.init_tz_device = my_g4d.init_tz_device
+
+    def __del__(self):
+        print("use __del__ to delete the Geant4 class ")
 
           
 # # # mobility model
@@ -685,22 +692,24 @@ class Drifts:
         self.muhh=1650.0   #mobility related with the magnetic field (now silicon useless)
         self.muhe=310.0
         self.BB=np.array([0,0,0])
-        self.sstep=0.1/FACTOR_UNIT*FACTOR_SIZE #drift step
+        self.sstep=0.1 #drift step
         self.kboltz=8.617385e-5 #eV/K
-        self.max_drift_len=1e9/FACTOR_UNIT #maximum diftlenght [um]
+        self.max_drift_len=1e9 #maximum diftlenght [um]
         self.d_dic_n = {}
         self.d_dic_p = {}
         if i == 0:
             for j in range(len(my_g4v.p_steps)):
-                if len(my_g4v.p_steps[j])>5 and i == 0:
+                if my_g4v.edep_devices[j]>0.2 and i == 0:
                     self.beam_number = j
                     self.tracks_p = my_g4v.p_steps[j]
                     self.tracks_step_edep = my_g4v.energy_steps[j]
                     self.tracks_t_edep = my_g4v.edep_devices[j]
                     i+=1
+                    continue
             if i == 0:
                 print("the sensor did have the hit particles")
-                sys.exit()            
+                sys.exit()
+
         else:
             self.beam_number = i
             self.tracks_p = my_g4v.p_steps[i]
@@ -734,7 +743,7 @@ class Drifts:
 
     def drift_v(self,my_d,my_f):
         e_delta_f = np.array(my_f.get_e_field(self.d_x+self.delta_x,self.d_y+self.delta_y,self.d_z+self.delta_z))
-        aver_e=(np.linalg.norm(self.e_field)+np.linalg.norm(e_delta_f))/2.0*1e4/FACTOR_UNIT  #V/cm
+        aver_e=(np.linalg.norm(self.e_field)+np.linalg.norm(e_delta_f))/2.0*1e4 #V/cm
         self.v_drift=sic_mobility(self.charg,aver_e,my_d)*aver_e  # mobility cm2/(V s) v : cm/s
         #drift part
         if(self.v_drift==0):
@@ -747,13 +756,13 @@ class Drifts:
             self.end_cond=9
         else:
             #off when the field gets large enough
-            DiffOffField=100.0*FACTOR_UNIT  # if the electric field  > 100V/um, the holes will multiplicat             
+            DiffOffField=100.0  # if the electric field  > 100V/um, the holes will multiplicat             
             if(np.linalg.norm(e_delta_f)<DiffOffField):
-                self.s_time=self.sstep*1e-4*FACTOR_UNIT/self.v_drift
+                self.s_time=self.sstep*1e-4/self.v_drift
                 s_sigma=math.sqrt(2.0*self.kboltz*sic_mobility(self.charg,aver_e,my_d)*my_d.temperature*self.s_time)
-                self.dif_x=random.gauss(0.0,s_sigma)*1e4/FACTOR_UNIT
-                self.dif_y=random.gauss(0.0,s_sigma)*1e4/FACTOR_UNIT
-                self.dif_z=random.gauss(0.0,s_sigma)*1e4/FACTOR_UNIT          
+                self.dif_x=random.gauss(0.0,s_sigma)*1e4
+                self.dif_y=random.gauss(0.0,s_sigma)*1e4
+                self.dif_z=random.gauss(0.0,s_sigma)*1e4       
             else:
                 print("the eletric field is too big, the multiplication appear. The system shold end. ")
                 sys.exit(0)
@@ -870,12 +879,12 @@ class Drifts:
                 #generated particles positions
                 self.d_x=self.tracks_p[i+1][0]#initial position
                 self.d_y=self.tracks_p[i+1][1]
-                self.d_z=self.tracks_p[i+1][2] 
+                self.d_z=self.tracks_p[i+1][2] - my_g4v.init_tz_device # the z position need to minus the position from geant4
                 while (self.end_cond==0):
                     self.e_field = np.array(my_f.get_e_field(self.d_x,self.d_y,self.d_z))
-                    if (self.d_y>=(my_d.l_y-1.0/FACTOR_UNIT) or self.d_x>=(my_d.l_x-1.0/FACTOR_UNIT) or self.d_z>=(my_d.l_z-1.0/FACTOR_UNIT)):
+                    if (self.d_y>=(my_d.l_y-1.0) or self.d_x>=(my_d.l_x-1.0) or self.d_z>=(my_d.l_z-1.0)):
                         self.end_cond=3  
-                    elif (self.d_y<=(1.0/FACTOR_UNIT) or self.d_x<=(1.0/FACTOR_UNIT) or self.d_z<=(1.0/FACTOR_UNIT)):
+                    elif (self.d_y<=(1.0) or self.d_x<=(1.0) or self.d_z<=(1.0)):
                         self.end_cond=8                    
                     elif (self.e_field[0]==0 and self.e_field[1]==0 and self.e_field[1]==0):
                         self.end_cond=9
@@ -892,7 +901,7 @@ class Drifts:
                         delta_Uw=my_f.get_w_p(self.d_cx,self.d_cy,self.d_cz)-my_f.get_w_p(self.d_x,self.d_y,self.d_z)
                         self.charge=self.charg*delta_Uw
                         if(self.v_drift!=0):
-                            self.d_time=self.d_time+self.sstep*1e-4*FACTOR_UNIT/self.v_drift
+                            self.d_time=self.d_time+self.sstep*1e-4/self.v_drift
                             self.path_len+=self.sstep
                         self.d_x=self.d_cx
                         self.d_y=self.d_cy
@@ -903,30 +912,41 @@ class Drifts:
                     self.n_step+=1
         Drifts.cal_current(self,my_d,my_g4v)
 
-    def draw_drift_path(self,my_d,my_f,n_e_v):
+    def draw_drift_path(self,my_d,my_f,sensor_model):
         ROOT.gStyle.SetOptStat(0)
         # # ROOT.gROOT.SetBatch(1)
         c1 = ROOT.TCanvas("c", "canvas1", 200,10,1000, 1000)
         c1.Divide(1,2)
-        nx_e = n_e_v[0]
-        ny_e = n_e_v[1]
-        nz_e = n_e_v[2]
+
+        if "3D" in sensor_model:
+            n_bin=[int((my_f.sx_r-my_f.sx_l)/5),int((my_f.sy_r-my_f.sy_l)/5),int((my_d.l_z)/10)]
+            structrue = ROOT.TH3D("","",n_bin[0],my_f.sx_l,my_f.sx_r,n_bin[1],my_f.sy_l,my_f.sy_r,n_bin[2],0,my_d.l_z)
+        elif "2D" in sensor_model:
+            n_bin=[int(my_d.l_x/50),int(my_d.l_y/50),int(my_d.l_z)]
+            structrue = ROOT.TH3D("","",n_bin[0],0,my_d.l_x,n_bin[1],0,my_d.l_y,n_bin[2],0,my_d.l_z)
         c1.cd(1)
-        structrue = ROOT.TH3D("","",nx_e,0,my_d.l_x,ny_e,0,my_d.l_y,nz_e,0,my_d.l_z)
-        
-        for k in range(nz_e):
-            for j in range (ny_e):
-                for i in range(nx_e):
-                    x_v = (i+1)*(my_d.l_x/nx_e)
-                    y_v = (j+1)*(my_d.l_y/ny_e)
-                    z_v = (k+1)*(my_d.l_z/nz_e)
+        for k in range(n_bin[2]):
+            for j in range (n_bin[1]):
+                for i in range(n_bin[0]):
+                    if "3D" in sensor_model:
+                        x_v = (i+1)*((my_f.sx_r-my_f.sx_l)/n_bin[0])+my_f.sx_l
+                        y_v = (j+1)*((my_f.sx_r-my_f.sx_l)/n_bin[1])+my_f.sx_l
+                        z_v = (k+1)*(my_d.l_z/n_bin[2])
+                    elif "2D" in sensor_model:
+                        x_v = (i+1)*(my_d.l_x/n_bin[0])
+                        y_v = (j+1)*(my_d.l_y/n_bin[1])
+                        z_v = (k+1)*(my_d.l_z/n_bin[2])
                     try:
-                        x_value,y_value,z_value = my_f.get_e_field(x_v,y_v,z_v)                       
-                        structrue.SetBinContent(i+1,j+1,k+1,0)
+                        x_value,y_value,z_value = my_f.get_e_field(x_v,y_v,z_v)
+                        if x_value==0 and y_value==0 and z_value ==0:
+                            structrue.SetBinContent(i+1,j+1,k+1,1)
+                        else:                       
+                            structrue.SetBinContent(i+1,j+1,k+1,0)
                     except RuntimeError:
-                        print("test:%s,%s,%s"%(x_value,y_value,z_value))
-                        structrue.SetBinContent(i+1,j+1,k+1,2)
+                        structrue.SetBinContent(i+1,j+1,k+1,1)
+        structrue.SetFillColor(1)
         structrue.Draw("ISO")
+
         mg = ROOT.TMultiGraph("mg","")
         x_array=array('f')
         y_array=array('f')
@@ -1127,6 +1147,7 @@ class Amplifier:
         for i in range(self.BB_ele.GetNbinsX()):
             f1.write("%s,%s,%s \n"%(i*self.time_unit,self.CSA_ele[i],self.BB_ele[i]))
         f1.close()
+        print("output_file:%s"%output_file)
         return self.charge_t,self.qtot
     def save_ele_scan_CSA(self,t_rise,t_fall,output_path):
         output_file = output_path + "/t_"+"_t_rise_"+str(t_rise)+"_t_fall_"+str(t_fall)+"_events.csv"
@@ -1148,7 +1169,7 @@ class Amplifier:
         f1.close()
         return self.charge_t,self.qtot
 
-def draw_plot(my_detector,ele_current,my_drift,my_field,my_g4v,drift_path):
+def draw_plot(my_detector,ele_current,my_drift,my_field,my_g4v,sensor_model):
     c=ROOT.TCanvas("c","canvas1",1000,1000)
     # c = ROOT.TCanvas()
     c.cd()
@@ -1229,9 +1250,7 @@ def draw_plot(my_detector,ele_current,my_drift,my_field,my_g4v,drift_path):
     h1.Draw()
     c1.SaveAs("fig/dep_SiC_energy.root")
 
-    n_bin=[int(my_detector.l_x),int(my_detector.l_y),int(my_detector.l_z)]
-    if drift_path == 1:
-        my_drift.draw_drift_path(my_detector,my_field,n_bin)
+    my_drift.draw_drift_path(my_detector,my_field,sensor_model)
     
     
 
@@ -1265,7 +1284,6 @@ def draw_ele_field(my_d,my_f,plane,sensor_model,depth):
     c1.SetRightMargin(0.12)
     c1.Update()
     c1.SaveAs("fig/ele_field"+plane+str(depth)+".root")
-    print("test2")
     del c1
 
 def fill_his(model,depth,my_d,my_f,plane,sensor_model):
@@ -1330,6 +1348,7 @@ def fill_his(model,depth,my_d,my_f,plane,sensor_model):
             elif "2D" in sensor_model:
                 x_v = (i+1)*(l_x/nx_e)
                 y_v = (j+1)*(l_y/ny_e)
+            f_v=0.0
             try:
                 if plane == "xy":
                     f_v = get_f_v(x_v,y_v,depth,model,my_f)
@@ -1376,16 +1395,41 @@ def save_charge(charge_t,qtot,x_v,y_v,output_path):
 def detector_structure(sensor_model):
     if "3D" in sensor_model:
         my_detector = R3dDetector(10000.0,10000.0,350.0)
-        my_detector.set_para(doping=10.0,voltage=-500.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+        my_detector.set_para(doping=10,voltage=-500,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
         my_detector.set_3D_electrode(e_ir=51.0,e_gap=150.0)   #e_ir the radius of electrode e_gap is the spacing between the gaps
     elif "2D" in sensor_model:
         my_detector = R3dDetector(5000.0,5000.0,100.0)
-        my_detector.set_para(doping=10.0,voltage=-500.0,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+        my_detector.set_para(doping=10,voltage=-500,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
     else:
         print("sensor model is wrrong")
         sys.exit()
     return my_detector
-
+# scan structure
+def scan_detector_structure(sensor_model,change_para,v_voltage=-500,v_doping=10,electrode_radius=51.0,electrode_gap=150.0):
+    para_name=change_para.split("_")[0]
+    para_value=change_para.split("_")[1]
+    if "voltage" in para_name:
+        v_voltage=float(para_value)
+    elif "doping" in para_name:
+        v_doping=float(para_value)
+    elif "radius" in para_name:
+        electrode_radius=float(para_value)
+    elif "gap" in para_name:
+        electrode_gap=float(para_value)
+    else:
+        print("Scan parameters name is wrong. The choose contain voltage,doping,radius,gap")
+    
+    if "3D" in sensor_model:
+        my_detector = R3dDetector(10000.0,10000.0,350.0)
+        my_detector.set_para(doping=v_doping,voltage=v_voltage,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+        my_detector.set_3D_electrode(e_ir=electrode_radius,e_gap=electrode_gap)   #e_ir the radius of electrode e_gap is the spacing between the gaps
+    elif "2D" in sensor_model:
+        my_detector = R3dDetector(5000.0,5000.0,100.0)
+        my_detector.set_para(doping=v_doping,voltage=v_voltage,temperature=300.0) #N-type is positive and P-type is negetive, doping /um^3 
+    else:
+        print("sensor model is wrrong")
+        sys.exit()
+    return my_detector
 # electric field
 def fenics_electric_field(my_detector,sensor_model):
     if "3D" in sensor_model:
@@ -1400,17 +1444,19 @@ def fenics_electric_field(my_detector,sensor_model):
     return my_field
 
 # particles 
-def particles_source(my_detector,geant_vis,sensor_model,seed=100,sub_stepn=100):
-    par_position = [0,0,17000.]  # incident position
-    par_out = [0,0,0.]           # exit position
+def particles_source(my_detector,geant_vis,sensor_model,my_field,seed=100,sub_stepn=100):
+    par_position = [my_detector.l_x/2.0,my_detector.l_y/2.0,17000.]  # incident position
+    par_out = [my_detector.l_x/2.0,my_detector.l_y/2.0,0.]           # exit position
     par_direction = [par_out[0]-par_position[0],par_out[1]-par_position[1],par_out[2]-par_position[2]]
-    my_g4d = MyDetectorConstruction(my_detector,sensor_model,maxStep=0.5*g4b.um)
+    my_g4d = MyDetectorConstruction(my_detector,sensor_model,my_field,maxStep=0.5*g4b.um)
     my_g4v = Geant4()
     if "scan" in sensor_model:
         my_g4v.geant_run(my_g4d,par_position,par_direction,seed,sub_stepn,0) 
     else:
         seed = random.randint(0,10000)
         my_g4v.geant_run(my_g4d,par_position,par_direction,seed,sub_stepn,geant_vis)
+    
+    del my_g4d
     return my_g4v
 
 # particles drift
@@ -1443,15 +1489,16 @@ def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,o
         sys.exit()        
     if "scan" in sensor_model:
         print("change_para:%s"%change_para)
-        output_path = output + "/voltage_"+str(abs(change_para))
+        output_path = output + "/"+change_para
         os.system("mkdir %s -p"%(output_path))      
         charge_t,qtot=my_ele.save_ele(i,x_v,y_v,output_path)
         save_charge(charge_t,qtot,x_v,y_v,output_path)
+
     else:
         draw_ele_field(my_detector,my_field,"xz",sensor_model,my_detector.l_y*0.5)
         draw_ele_field(my_detector,my_field,"xy",sensor_model,my_detector.l_z*0.5)
         draw_ele_field(my_detector,my_field,"yz",sensor_model,my_detector.l_x*0.5)
-        draw_plot(my_detector,BB_cur,my_drift,my_field,my_g4v,drift_path=1)
+        draw_plot(my_detector,BB_cur,my_drift,my_field,my_g4v,sensor_model)
 
     del CSA_cur
     del BB_cur
@@ -1461,18 +1508,17 @@ def threeD_time(sensor_model,geant_vis):
 
     my_detector=detector_structure(sensor_model)                ### define the structure of the detector   
     my_field=fenics_electric_field(my_detector,sensor_model)    ### get the electric field and weighting potential   
-    my_g4v=particles_source(my_detector,geant_vis,sensor_model) ### particles source   
+    my_g4v=particles_source(my_detector,geant_vis,sensor_model,my_field) ### particles source   
     my_drift=particles_drift(my_g4v,my_field,my_detector)       ### drift of ionized particles   
     my_ele=electronics(my_detector)                             ### readout electronics   
     save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v) ### save and draw data
+    del my_g4v
+### scan 2D or 3D to get  time resolution
+def threeD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0):
 
-### scan 2D to get  time resolution
-def twoD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0):
-
-    my_detector=detector_structure(sensor_model)                ### define the structure of the detector   
+    my_detector=scan_detector_structure(sensor_model,change_para)                ### define the structure of the detector   
     my_field=fenics_electric_field(my_detector,sensor_model)    ### get the electric field and weighting potential   
-    my_g4v=particles_source(my_detector,geant_vis,sensor_model,seed=numbers-step_n,sub_stepn=step_n) ### particles source   
-    
+    my_g4v=particles_source(my_detector,geant_vis,sensor_model,my_field,seed=numbers-step_n,sub_stepn=step_n) ### particles source      
     for i in range(numbers-step_n,numbers): 
         print("event number:%s"%i)
         if len(my_g4v.p_steps[i-numbers+step_n])>5:     
@@ -1480,75 +1526,25 @@ def twoD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0):
             my_ele=electronics(my_detector)                             ### readout electronics   
             save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output,change_para) ### save and draw data
 
-### scan 3D to get  time resolution
-def threeD_time_scan(output,numbers,step_n,change_para,sensor_model):
-    ## define the structure of the detector
-    print(change_para)
-    my_detector = R3dDetector(5000.,5000.,300.)
-    my_detector.set_para(doping=10,voltage=-500,temperature=300)
-    #N-type is  positive and P-type is negetive, doping /um^3 
-    if sensor_model == "3D_scan":
-        my_detector.set_3D_electrode(5.0,change_para)
-    ### get the electric field and weighting potential
-    my_field = Fenics_cal(my_detector,mesh_v=32)
-    my_field.fenics_p_electric(my_detector) 
-    my_field.fenics_p_w_electric(my_detector)
-    ### drift path
-    x_min = my_detector.e_t_2[0]-my_detector.e_t_2[2]
-    x_max = my_detector.e_t_3[0]+my_detector.e_t_3[2]
-    y_min = my_detector.e_t_7[1]-my_detector.e_t_7[2]
-    y_max = my_detector.e_t_4[1]+my_detector.e_t_4[2]
-    nx = ny = int(math.sqrt(t_numbers))
-    x_step = (x_max-x_min)/(nx-1)
-    y_step = (y_max-y_min)/(ny-1)
-    print("number:%s"%numbers)
-    n_y = int(numbers/nx)
-    n_x = numbers%nx
-    x_v = x_min + x_step*n_x
-    y_v = y_min + y_step*n_y
-    par_position = [x_v,y_v,100.]
-    par_out = [x_v,y_v,0.]
-    par_direction = [par_out[0]-par_position[0],par_out[1]-par_position[1],par_out[2]-par_position[2]]
-    my_g4d = MyDetectorConstruction(my_detector,maxStep=1.0*g4b.um)
-    my_g4v = Geant4(my_g4d,par_position,par_direction,numbers,1,0) 
-    ### drift of ionized particles
-    my_drift = Drifts(my_g4v,0)
-    my_drift.ionized_drift(my_g4v,my_field,my_detector,1)
-#     ### after the electronics
-    my_electronics = Amplifier()
-    charge_t,qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    ROOT.gROOT.SetBatch(1)
-    c = ROOT.TCanvas("Plots", "Plots", 1000, 1000)
-    ele_current.Draw("HIST")
-    c.Update()
-    output_path = output + "/gap_"+str(change_para)+"_voltage_350"
-    os.system("mkdir %s -p"%(output_path))
-    c.SaveAs(output_path+"/t_"+str(numbers)+"_vx_"+str(int(x_v))+"_vy_"+str(int(y_v))+"_events.C")
-    del c
-    save_charge(charge_t,qtot,x_v,y_v,output_path)
-
 def main(args):
 
     model = args[0]
-    if model == "2D" or "3D":
+
+    if model == "2D" or model == "3D":
         geant_vis = args[1]
         threeD_time(model,geant_vis)
     elif "scan" in model:
         output = args[1]
         numbers = int(args[2])
         n_step = int(args[3])
-        change_para = float(args[4])
-        if model == "3Dscan":
-            threeD_time_scan(output,numbers,n_step,change_para,model)
-        elif model == "2D_scan":
-            twoD_time_scan(output,numbers,n_step,change_para,model)
-        else:
-            print("sensor model is wrrong")
-            sys.exit()
+        change_para = args[4]
+        threeD_time_scan(output,numbers,n_step,change_para,model)
+
     else:
         print("sensor model is wrrong")
         sys.exit()
     print("run end")
+    os._exit(0)
     
 if __name__ == '__main__':
     #record run time

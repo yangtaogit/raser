@@ -18,19 +18,14 @@ usage() {
 
 usage_0_1() { 
     printf "\n\t%-5s  %-40s\n"  "0.1.1"    "RASER 2D SiC basic information" 
-    printf "\n\t%-5s  %-40s\n"  "0.1.2"    "batch model" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.2"    "2D batch model" 
     printf "\n\t%-5s  %-40s\n"  "0.1.3"    "raser 2D scan for time resolution..." 
     printf "\n\t%-5s  %-40s\n"  "0.1.4"    "get time resolution 2D" 
 }
 usage_0_2() { 
     printf "\n\t%-5s  %-40s\n"  "0.2.1"    "RASER 3D SiC basic information" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.2"    "RASER 3D scan for time resolution" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.3"    "data processing 3D voltage" 
-	printf "\n\t%-5s  %-40s\n"  "0.2.4"    "data processing 3D gap" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.5"    "get time resolution voltage scan" 
-	printf "\n\t%-5s  %-40s\n"  "0.2.6"    "get time resolution gap scan" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.7"    "Batch background operation voltage sca" 
-	printf "\n\t%-5s  %-40s\n"  "0.2.8"    "Batch background operation gap scan" 
+    printf "\n\t%-5s  %-40s\n"  "0.2.2"    "3D batch model" 
+    printf "\n\t%-5s  %-40s\n"  "0.2.3"    "raser 3D scan for time resolution..." 
 	printf "\n\t%-5s  %-40s\n"  "0.2.9"    "Stop Batch background operation" 
 }
 usage_0_3() { 
@@ -44,19 +39,18 @@ if [[ $# -eq 0 ]]; then
 else
     option=$1 
     option2=$2  
-    t_number=$3
-    step_n=$4 
-    change_p=$5   
+    step_n=$3
+    change_p=$4   
 fi
 
 sub_0_1(){
 time_2D=2021_8_19_two_ele
 case $option in 
     0.1.1) echo "raser 2D SiC basic information..."
-        ./python/raser.py 3D 2D 1    
+        ./python/raser.py 3D 2D 0    
         ;;
-    0.1.2) echo "batch model"
-        ./python/run_job.py 200 1000 -500 0 5
+    0.1.2) echo "2D batch model"
+        ./python/run_job.py 2D sub_200 total_1000 voltage_-500 instance_0 
         ;;
     0.1.3) echo "raser 2D scan for time resolution..."
 		source singularity_bashrc.sh
@@ -65,60 +59,52 @@ case $option in
         ./python/raser.py 3D 2D_scan out/fenics_${time_2D}/ ${option2} ${step_n} ${change_p}
         ;;
 
-    0.1.4) echo "get time resolution"
+    0.1.4) echo "get time resolution 2D"
         mkdir out/fenics_${time_2D}/ -p
         singularity exec raser.simg python3 python/add_noise_raser.py out/fenics_${time_2D}/voltage_500.0 out/fenics_${time_2D}/sic_${time_2D}_result.root
         esac
 }
  
 sub_0_2(){
-time_gap=2021_6_18_3D_gap_scan
-time_voltage=2021_7_28_2D_voltage_scan
-
+time_3D=2021_8_25_3D
 case $option in 
     0.2.1) echo "raser 3D SiC basic information..."
         mkdir fig/ -p
         ./python/raser.py 3D 3D  0
 		#0 is geant4 visualization useless, 1 is useful
         ;;
-	0.2.2) echo "raser 3D scan for time resolution..."
-        mkdir out/fenics_${time_voltage}/ -p
-        #python3 python/raser_3D.py 3D_scan out/fenics_${time_gap} ${number} ${t_number} ${step_n} ${change_p}
-		python3 python/run_job_3D.py 2D_scan out/fenics_${time_voltage} ${option2} ${t_number} ${step_n} ${change_p}	
+	0.2.2) echo "3D batch model"
+        ./python/run_job.py 3D sub_200 total_1000 voltage_-500 instance_0 
         ;;
-    # 0.2.2.1) echo "raser 3D scan for time resolution..."
-    #     mkdir out/fenics_${time_gap}/ -p
-    #     #python3 python/raser_3D.py 3D_scan out/fenics_${time_gap} ${number} ${t_number} ${step_n} ${change_p}
-	# 	python3 python/run_job_3D.py 3D_scan out/fenics_${time_gap} ${number} ${t_number} ${step_n} ${change_p}	
-    #     ;;
-    0.2.3) echo "data processing voltage"
-        mkdir result/sic_${time_voltage}_result/gap_40_voltage_650.0 -p
-        # rm result/sic_${time_gap}_result/*
-        singularity exec raser.simg python3 python/raser_read_sample.py out/fenics_${time_voltage}/gap_40_voltage_-650.0 result/sic_${time_voltage}_result/gap_40_voltage_650.0/ V
+    0.2.3) echo "raser 3D scan for time resolution..."
+		source singularity_bashrc.sh
+        mkdir out/fenics_${time_3D}/ -p
+        rm out/fenics_${time_3D}/* -rf
+        ./python/raser.py 3D 3D_scan out/fenics_${time_3D}/ ${option2} ${step_n} ${change_p}
 		;;
-    0.2.4) echo "data processing gap"
-        rm -rf result/sic_${time_gap}_result/*
-        mkdir result/sic_${time_gap}_result/gap_35_voltage_350 -p
-        # rm result/sic_${time_gap}_result/*
-        singularity exec raser.simg python3 python/raser_read_sample.py out/fenics_${time_gap}/gap_35.0_voltage_350  result/sic_${time_gap}_result/gap_35_voltage_350/  V
-        ;;
-    0.2.5) echo "get time resolution voltage scan"
-        mkdir result/voltage/root -p
-        singularity exec raser.simg python3 python/add_noise_raser.py result/sic_${time_voltage}_result/gap_40_voltage_650.0/ result/voltage/root/sic_${time_voltage}_650_result.root
-        ;;
-    0.2.6) echo "get time resolution gap scan"
-        rm -rf result/gap/root
-        mkdir result/gap/root -p
-        singularity exec raser.simg python3 python/add_noise_raser.py result/sic_${time_gap}_result/gap_44.0 result/gap/root/sic_${time_gap}_gap_44.0_result.root
-        ;;
-    0.2.7) echo "Batch background operation voltage scan"
-        mkdir out/fenics_${time_voltage}/ -p
-        python3 python/sub_job_3D.py 2000 10000 -500 5 
-        ;;
-    0.2.8) echo "Batch background operation gap scan"
-        mkdir out/fenics_${time_gap}/ -p
-        python3 python/run_job.py 2000 10000 35.0 0
-        ;;
+	# uncertain content
+    # 0.2.4) echo "data processing gap"
+    #     rm -rf result/sic_${time_gap}_result/*
+    #     mkdir result/sic_${time_gap}_result/gap_35_voltage_350 -p
+    #     singularity exec raser.simg python3 python/raser_read_sample.py out/fenics_${time_gap}/gap_35.0_voltage_350  result/sic_${time_gap}_result/gap_35_voltage_350/  V
+    #     ;;
+    # 0.2.5) echo "get time resolution voltage scan"
+    #     mkdir result/voltage/root -p
+    #     singularity exec raser.simg python3 python/add_noise_raser.py result/sic_${time_voltage}_result/gap_40_voltage_650.0/ result/voltage/root/sic_${time_voltage}_650_result.root
+    #     ;;
+    # 0.2.6) echo "get time resolution gap scan"
+    #     rm -rf result/gap/root
+    #     mkdir result/gap/root -p
+    #     singularity exec raser.simg python3 python/add_noise_raser.py result/sic_${time_gap}_result/gap_44.0 result/gap/root/sic_${time_gap}_gap_44.0_result.root
+    #     ;;
+    # 0.2.7) echo "Batch background operation voltage scan"
+    #     mkdir out/fenics_${time_voltage}/ -p
+    #     python3 python/sub_job_3D.py 2000 10000 -500 5 
+    #     ;;
+    # 0.2.8) echo "Batch background operation gap scan"
+    #     mkdir out/fenics_${time_gap}/ -p
+    #     python3 python/run_job.py 2000 10000 35.0 0
+    #     ;;
     0.2.9) echo "Stop Batch background operation"
         singularity instance stop --all
         esac
