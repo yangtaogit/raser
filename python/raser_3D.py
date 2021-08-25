@@ -442,7 +442,7 @@ class Drifts:
             self.end_cond=9
         else:
             #off when the field gets large enough
-            DiffOffField=100.0*FACTOR_UNIT  # the silicon value ???              
+            DiffOffField=100.0*FACTOR_UNIT  # the silicon value ???           
             if(np.linalg.norm(e_delta_f)<DiffOffField):
                 self.s_time=self.sstep*1e-4*FACTOR_UNIT/self.v_drift
                 s_sigma=math.sqrt(2.0*self.kboltz*sic_mobility(self.charg,aver_e,my_d)*my_d.temperature*self.s_time)
