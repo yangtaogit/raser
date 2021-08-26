@@ -2,49 +2,41 @@
 import os
 import sys
 import time
+import subprocess
+class Input_parameters:
+    def __init__(self,args):
+        self.events_each_run = int(args[1].split("_")[-1]) # events/run
+        self.events_total = int(args[2].split("_")[-1]) # events/total
+        self.instance_in = int(args[3].split("_")[-1]) #singularity instance start number
+        self.change_p = args[4] #parameters
+        self.output_path=args[5].split("=")[-1]      #output name
+    @property
+    def instance_number(self): #singularity instance number
+        return int(self.events_total/self.events_each_run)
+
 def main():
     args = sys.argv[1:]
-    args[0]
+    input=Input_parameters(args)
     if "3D" in args[0]:
-        threeD_job(args)
+        sub_job(input,model="3D",run_code="./run 0.2.3 3D 3D_scan")
     elif "2D" in args[0]:
-        twoD_job(args)
+        sub_job(input,model="2D",run_code="./run 0.1.3 3D 2D_scan")
     else:
         print("the scan model is wrong")
 
-def threeD_job(args):
-    n_number = int(args[1].split("_")[-1])
-    t_number = int(args[2].split("_")[-1])
-    change_p = args[3]
-    n_in = int(args[4].split("_")[-1])
-    n=int(t_number/n_number)
-    
-    for i in range(n):
-        intance_n  = "instance"+str(n_in+i)
-        os.system("singularity instance start raser.simg "+intance_n)
+def sub_job(input,model,run_code):
 
-    for i in range(n):
-        e_number=n_number*(i+1)
-        print(e_number)
-        os.system('singularity exec instance://instance%s ./run 0.2.3 %s %s %s &' %(i,e_number,n_number,change_p))
+    for i in range(input.instance_number):
+        intance_n  = "instance"+str(input.instance_in+i)
+        runcmd("singularity instance start raser.simg "+intance_n)
+
+    for i in range(input.instance_number):
+        e_number=input.events_each_run*(i+1)
+        runcmd('singularity exec instance://instance%s %s %s %s %s %s &' 
+        %(input.instance_in+i,run_code,e_number,input.events_each_run,input.change_p,input.output_path))
         time.sleep(1)
 
-def twoD_job(args):
-    n_number = int(args[1].split("_")[-1])
-    t_number = int(args[2].split("_")[-1])
-    change_p = args[3]
-    n_in = int(args[4].split("_")[-1])
-    print(n_number,t_number,change_p,n_in)
-
-    n=int(t_number/n_number)
-    for i in range(n):
-        intance_n  = "instance"+str(n_in+i)
-        os.system("singularity instance start raser.simg "+intance_n)
-
-    for i in range(n):
-        e_number=n_number*(i+1)
-        print(e_number)
-        os.system('singularity exec instance://instance%s ./run 0.1.3 %s %s %s &' %(i,e_number,n_number,change_p))
-        time.sleep(1)
+def runcmd(command):
+    ret = subprocess.run([command],shell=True)
 if __name__ == '__main__':
     main()
