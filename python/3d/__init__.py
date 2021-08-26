@@ -1474,10 +1474,9 @@ def electronics(my_detector):
     return my_ele
 # save and draw data
 
-def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output="test",change_para=100):
+def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output="test",change_para=100,number=1):
     CSA_cur=my_ele.CSA_amp()
     BB_cur=my_ele.BB_amp()
-    i=1
     if "3D" in sensor_model:
         x_v=5000
         y_v=5000
@@ -1489,9 +1488,10 @@ def save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,o
         sys.exit()        
     if "scan" in sensor_model:
         print("change_para:%s"%change_para)
-        output_path = output + "/"+change_para
-        os.makedirs(output_path)    
-        charge_t,qtot=my_ele.save_ele(i,x_v,y_v,output_path)
+        output_path = output + "_"+change_para
+        if not os.access(output_path, os.F_OK):
+            os.makedirs(output_path) 
+        charge_t,qtot=my_ele.save_ele(number,x_v,y_v,output_path)
         save_charge(charge_t,qtot,x_v,y_v,output_path)
 
     else:
@@ -1518,13 +1518,13 @@ def threeD_time_scan(output,numbers,step_n,change_para,sensor_model,geant_vis=0)
 
     my_detector=scan_detector_structure(sensor_model,change_para)                ### define the structure of the detector   
     my_field=fenics_electric_field(my_detector,sensor_model)    ### get the electric field and weighting potential   
-    my_g4v=particles_source(my_detector,geant_vis,sensor_model,my_field,seed=numbers-step_n,sub_stepn=step_n) ### particles source      
-    for i in range(numbers-step_n,numbers): 
+    my_g4v=particles_source(my_detector,geant_vis,sensor_model,my_field,seed=numbers-step_n+1,sub_stepn=step_n+1) ### particles source      
+    for i in range(numbers-step_n+1,numbers+1): 
         print("event number:%s"%i)
         if len(my_g4v.p_steps[i-numbers+step_n])>5:     
             my_drift=particles_drift(my_g4v,my_field,my_detector,i-numbers+step_n)       ### drift of ionized particles   
             my_ele=electronics(my_detector)                             ### readout electronics   
-            save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output,change_para) ### save and draw data
+            save_or_draw_data(sensor_model,my_ele,my_detector,my_drift,my_field,my_g4v,output,change_para,number=i) ### save and draw data
 
 def main(args):
 
@@ -1533,10 +1533,11 @@ def main(args):
         geant_vis = args[1]
         threeD_time(model,geant_vis)
     elif "scan" in model:
-        output = args[1]
-        numbers = int(args[2])
-        n_step = int(args[3])
-        change_para = args[4]
+        
+        numbers = int(args[1]) # start numbers value
+        n_step = int(args[2])  # numbers length
+        change_para = args[3]  # input parameter
+        output = args[4]       # output path
         threeD_time_scan(output,numbers,n_step,change_para,model)
     else:
         print("sensor model is wrrong")

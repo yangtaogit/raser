@@ -1296,14 +1296,14 @@ def twoD_time_scan(output,number):
 
 def main():
     args = sys.argv[1:]
-    
-    if args[0] == '3D': 
+
+    if args[1] == '3D': 
         module_name = '3d'
     else: 
         raise NameError(args[0])
     
     module = __import__(module_name)
-    module.main(args[1:])
+    module.main(args[2:])
 
     sys.exit() 
 
