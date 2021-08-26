@@ -1,6 +1,11 @@
+#!/usr/bin/env python3
+
+'''
 #  Author: Yuhang Tan <tanyuhang@ihep.ac.cn> 
 #  Created [2021-05-18 Tues 14:11] 
 #  Based on Raser C++ https://github.com/dt-np/raser
+'''
+
 
 from operator import mod
 import matplotlib.pyplot as plt
@@ -1203,7 +1208,19 @@ def twoD_time_scan(output,number):
 
 def main():
     args = sys.argv[1:]
+    
+    if args[0] == '3D': 
+        module_name = '3d'
+    else: 
+        raise NameError(args[0])
+    
+    module = __import__(module_name)
+    module.main(args[1:])
+
+    sys.exit() 
+
     model = args[0]
+    module = __import__(module_name)
 
     if model in ["2D","2D_SiC_PIN"]:
         twoD_time()
