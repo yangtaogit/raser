@@ -26,8 +26,6 @@ class R2dDetector:
     def mesh_step(self,lx_step,ly_step):
         self.n_x = int(self.l_x/lx_step) #mesh step
         self.n_y = int(self.l_y/ly_step)
-        print(self.n_x)
-        print(self.n_y)
     def set_para(self,doping,voltage,temperature):
         self.d_neff = doping   #dopingX1e12 cm^-3
         self.v_voltage = voltage   #Voltage
@@ -1090,8 +1088,6 @@ def twoD_TCT(model="PIN"):
         draw_nocarrier(my_track, my_detector, nocarrier)
         cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
         vmin = [i * 50 for i in cumin]
-        print(r)
-        print(vmin)
         y.append(vmin)
         x[i].append(r)
         x_array.extend(x[i])
@@ -1111,8 +1107,6 @@ def twoD_TCT(model="PIN"):
     tree = ROOT.TTree("tree","tree")
     v = array('f', [0.])
     z = array('f', [0.])
-    print(z)
-    print(v)
     tree.Branch("v", v, "v/F")
     tree.Branch("z", z, "z/F")
     for i in range(num+1):
@@ -1208,19 +1202,7 @@ def twoD_time_scan(output,number):
 
 def main():
     args = sys.argv[1:]
-    
-    if args[0] == '3D': 
-        module_name = '3d'
-    else: 
-        raise NameError(args[0])
-    
-    module = __import__(module_name)
-    module.main(args[1:])
-
-    sys.exit() 
-
     model = args[0]
-    module = __import__(module_name)
 
     if model in ["2D","2D_SiC_PIN"]:
         twoD_time()
