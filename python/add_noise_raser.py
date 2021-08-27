@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
 author: tanyuhang
 time: 2021.3.8
