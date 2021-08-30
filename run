@@ -52,7 +52,7 @@ case $option in
         ./python/run_job.py 2D sub_10 total_10  instance_0 voltage_-500 output=out/2021815_2DPIN
         ;;
     0.1.3) echo "raser 2D scan for time resolution... used by 0.1.2"
-        ./python/raser.py  ${input_para}
+        ./python/raser.py  ${input_para:5:100}
         ;;
 
     0.1.4) echo "get time resolution 2D"
@@ -70,7 +70,7 @@ case $option in
         ./python/run_job.py 3D sub_10 total_10  instance_0 voltage_-500 output=out/2021826_3D
         ;;
     0.2.3) echo "raser 3D scan for time resolution... used by 0.2.2"
-		./python/raser.py  ${input_para}
+		./python/raser.py  ${input_para:5:100}
 		;;
     0.2.4) echo "Stop Batch background operation"
         singularity instance stop --all
