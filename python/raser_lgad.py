@@ -1,11 +1,11 @@
 """
 
-Author: Tao Yang <yangtao@ihep.ac.cn> 
+Author: Tao Yang <yangtao@ihep.ac.cn> and Yuhang Tan <tanyuhang@ihep.ac.cn>
 Created [2021-07-07 Wed 08:47] 
 Based on Raser C++ https://github.com/dt-np/raser
 
 
-This program solves 2D Poisson's equation for SiC PIN & LGAD doping profile
+This program solves 2D Poisson's equation for Si & SiC PIN & LGAD doping profile
 
     - div grad u(x,y) = f(x,y)
 
@@ -20,8 +20,13 @@ on the unit interval with source f given by
     f(x,y) = (6.1942*pow(10,16)/sqrt(2*3.1415926)/0.13821*exp(-pow(x-0.67,2))/2/0.13821/0.13821 + pow(10,13))*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))
 
 and boundary conditions given by
-    u(x,y) = 0 for x = 0
-    u(x,y) = Bias_voltage for x = thin
+    u(x,y) = Bias_voltage for x = 0
+    u(x,y) = 0 for x = thin
+
+######################################################################
+Warning:    N-type bulk is positive Spacecharge, negative Bias_voltage
+            P-type bulk is negative Spacecharge, positive Bias_voltage
+######################################################################
 
 """
 
@@ -34,11 +39,12 @@ import time
 import sys
 import ROOT
 from array import array
+import matplotlib.pyplot as plt
 from raser import twoD_time 
 
 """ Global Constant """
-E0 = 1.60217733e-19 # C
-PERM0 = 8.854187817e-12 #F/m
+e0 = 1.60217733e-19 # C
+perm0 = 8.854187817e-12 # F/m
 
 
 
@@ -53,7 +59,7 @@ class Material:
 
         # material par
         self.si_par_dict = {'Permittivity' : 11.5,\
-                             'Avalanche': 'unknown',\
+                             'Avalanche': 'vanOverstraeten',\
                              'Mobility' : 'unknown'\
                             }
 
@@ -73,8 +79,8 @@ class Material:
 """ Define Mobility """
 
 class Mobility:
-    def __init__(self,model_name):
-        self.model_name = model_name
+    def __init__(self,mat_name):
+        self.mat_name = mat_name
 
     def cal_mobility(self, det, position, charge, electric_field):
 
@@ -88,10 +94,10 @@ class Mobility:
         doping_expr = doping_expr.replace("sqrt","math.sqrt")
         doping_expr = doping_expr.replace("exp","math.exp")
         #print(doping_expr)
-        Neff = eval(doping_expr)
+        Neff = abs(eval(doping_expr))
 
         # SiC mobility
-        if(self.model_name == 'SiC'):
+        if(self.mat_name == 'SiC'):
             if(charge>0):
                 alpha = 0.34
                 ulp = 124 * math.pow(T / 300, -2)
@@ -112,7 +118,7 @@ class Mobility:
                 hfm = lfm / (math.pow(1.0 + math.pow(lfm * E / vsatp, betap), 1.0/betap))
 
         # Si mobility
-        if(self.model_name == 'Si'):
+        if(self.mat_name == 'Si'):
             alpha = 0.72*math.pow(T/300.0,0.065)
             if(charge>0):
                 ulp = 460.0 * math.pow(T / 300.0, -2.18)
@@ -135,12 +141,82 @@ class Mobility:
 
 
 
+""" Define Avalanche """
+
+class Avalanche:
+        
+    def __init__(self,model_name):
+        self.model_name = model_name
+
+    def cal_coefficient(self, electric_field, charge_polarity, temperature):
+
+        coefficient = 1.0
+
+        E = electric_field # V/cm
+        T = temperature # K
+
+        # van Overstraeten – de Man Model
+        if(self.model_name == 'vanOverstraeten'):
+
+            hbarOmega = 0.063 # eV
+            E0 = 4.0e5 # V/cm
+            T0 = 293.0 # K
+            k_T0 = 0.0257 # eV
+
+            # electron
+            if( charge_polarity == -1 ): 
+
+                a_low = 7.03e5 # cm-1
+                a_high = 7.03e5 # cm-1
+
+                b_low = 1.232e6 # cm-1
+                b_high = 1.232e6 # cm-1
+
+                #
+                # For BandgapDependence parameters
+                #
+
+                # Glambda = 62e-8 #cm
+                # beta_low = 0.678925 # 1
+                # beta_high = 0.678925 # 1
+
+            # hole
+            if( charge_polarity == 1 ): 
+
+                a_low = 1.582e6 # cm-1
+                a_high = 6.71e5 # cm-1
+
+                b_low = 2.036e6 # cm-1
+                b_high = 1.693e6 # cm-1
+
+                Glambda = 45e-8 #cm
+
+                beta_low = 0.815009 # 1
+                beta_high =  0.677706 # 1
+
+            Ggamma = math.tanh(hbarOmega/(2*k_T0))/math.tanh(hbarOmega/(2*k_T0*T/T0))
+
+            if(E>E0):
+                coefficient = Ggamma*a_high*math.exp(-(Ggamma*b_high)/E)
+            else:
+                coefficient = Ggamma*a_low*math.exp(-(Ggamma*b_low)/E)
+        
+
+        return coefficient
+
+
+
+
+
+
+
 
 """ Define Detector Geometry """
 
 class R2dDetector:
 
     def __init__(self,det_width,det_thin):
+
         self.det_width = det_width #um X-axis
         self.det_thin = det_thin #um Y-axis
 
@@ -237,7 +313,7 @@ class FenicsPossion:
 
         self.potential_value_2d = potential_value_2d
 
-        # print(potential_value_2d)
+        # print(self.potential_value_2d)
 
 
     def cal_weighting_possion(self):
@@ -253,7 +329,7 @@ class FenicsPossion:
         V = fenics.FunctionSpace(mesh, "P", 1)
 
         # Define boundary condition
-        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = -100)
+        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
 
         def boundary(x, on_boundary):
             return abs(x[1])<1E-14 or abs(x[1]-thin)<1E-14
@@ -296,15 +372,15 @@ class FenicsPossion:
 
                 # electric field
                 tmp_xpos = 0.5*x_step*(2*i+1)
-                tmp_ef = (self.potential_value_2d[j][i] - self.potential_value_2d[j][i+1])/x_step
+                tmp_xef = (self.potential_value_2d[j][i] - self.potential_value_2d[j][i+1])/x_step
                 self.electric_field_x_position[j].append(tmp_xpos)
-                self.electric_field_x_value[j].append(tmp_ef)
+                self.electric_field_x_value[j].append(tmp_xef)
 
                 # weighting field
                 tmp_wxpos = 0.5*x_step*(2*i+1)
-                tmp_wef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j][i+1])/x_step
+                tmp_xwef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j][i+1])/x_step
                 self.weighting_electric_field_x_position[j].append(tmp_wxpos)
-                self.weighting_electric_field_x_value[j].append(tmp_wef)
+                self.weighting_electric_field_x_value[j].append(tmp_xwef)
 
 
         # y direction 
@@ -313,15 +389,15 @@ class FenicsPossion:
 
                 # electric field
                 tmp_ypos = 0.5*y_step*(2*j+1)
-                tmp_ef = (self.potential_value_2d[j][i]- self.potential_value_2d[j+1][i])/y_step
+                tmp_yef = (self.potential_value_2d[j][i]- self.potential_value_2d[j+1][i])/y_step
                 self.electric_field_y_position[j].append(tmp_ypos)
-                self.electric_field_y_value[j].append(tmp_ef)
+                self.electric_field_y_value[j].append(tmp_yef)
 
                 # weighting field
                 tmp_wypos = 0.5*y_step*(2*j+1)
-                tmp_wef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j+1][i])/y_step
+                tmp_ywef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j+1][i])/y_step
                 self.weighting_electric_field_y_position[j].append(tmp_wypos)
-                self.weighting_electric_field_y_value[j].append(tmp_wef)     
+                self.weighting_electric_field_y_value[j].append(tmp_ywef)     
 
 
 
@@ -401,7 +477,7 @@ class FenicsPossion:
 
     def draw(self):
 
-        cutline = int(self.det.ny/2)
+        cutline = int(self.det.nx/2)
 
         # plot electric field at x = middle
         ep = array( 'd' )
@@ -411,8 +487,8 @@ class FenicsPossion:
             ep.append(self.electric_field_y_position[i][cutline])
             ev.append(self.electric_field_y_value[i][cutline])
 
-        #print(ep)
-        #print(ev)
+        # print(ep)
+        # print(ev)
 
         g_e = ROOT.TGraph(self.det.ny,ep,ev)
 
@@ -455,12 +531,12 @@ class FenicsPossion:
 
         # plt.figure(figsize=(8,4), dpi=80)
         # plt.figure(1)
-# 
+# # 
         # ax1 = plt.subplot(121)        
         # plt.plot( [depth[250] for depth in self.electric_field_y_position], [ef[250] for ef in self.electric_field_y_value])
         # plt.xlabel('depth [um]')
         # plt.ylabel('electric field [V/um]')
-# 
+# # 
         # ax2 = plt.subplot(122)
         # plt.plot( [wdepth[250] for wdepth in self.weighting_electric_field_y_position], [wef[250] for wef in self.weighting_electric_field_y_value])
         # plt.xlabel('depth [um]')
@@ -474,198 +550,57 @@ class FenicsPossion:
 """ Define Track """
 
 class Tracks:
-    def mips(self,p_entry,p_exit,n_div):
-        self.p_entry = p_entry
-        self.p_exit = p_exit
-        self.p_tracks = [ [] for n in range(n_div-1) ]
-        self.d_tracks = []
-        p_x=p_entry[0]
-        p_y=p_entry[1]
-        # self.py_entry=[]
+
+    # MIPs particle
+    def mips(self,track_entry,track_exit,n_div):
+
+        # initial
+        self.track_entry = track_entry
+        self.track_exit = track_exit
+        self.track_position = [ [] for n in range(n_div-1) ]
+        self.delta_track = []
+
+        # start position
+        track_position_x=track_entry[0]
+        track_position_y=track_entry[1]
+
         for i in range(n_div-1):
-            x_div_point = (p_exit[0]-p_entry[0])/n_div*i+p_entry[0]+(p_exit[0]-p_entry[0])/(2*n_div)
-            y_div_point = (p_exit[1]-p_entry[1])/n_div*i+p_entry[1]+(p_exit[1]-p_entry[1])/(2*n_div)
-            self.p_tracks[i].append(x_div_point)
-            self.p_tracks[i].append(y_div_point)
-            self.d_tracks.append(math.sqrt(math.pow(x_div_point-p_x,2)+math.pow(y_div_point-p_y,2)))
-            p_x = x_div_point
-            p_y = y_div_point
 
+            x_div_point = (track_exit[0]-track_entry[0])/n_div*i+track_entry[0]+(track_exit[0]-track_entry[0])/(2*n_div)
+            y_div_point = (track_exit[1]-track_entry[1])/n_div*i+track_entry[1]+(track_exit[1]-track_entry[1])/(2*n_div)
 
+            self.track_position[i].append(x_div_point)
+            self.track_position[i].append(y_div_point)
 
-""" Define Detector Geometry """
+            self.delta_track.append(math.sqrt(math.pow(x_div_point-track_position_x,2)+math.pow(y_div_point-track_position_y,2)))
 
-class Drifts:
+            track_position_x = x_div_point
+            track_position_y = y_div_point
+    
+    def mips_ionized(self):
 
-    def __init__(self,track):
-        self.muhh=1650   #mobility related with the magnetic field (now silicon useless)
-        self.muhe=310
-        self.BB=np.array([0,0])
-        self.sstep=0.1 #drift step
-        self.kboltz=8.617385e-5 #eV/K
-        self.max_drift_len=1e9 #maximum diftlenght [um]
-        self.d_dic_n = {}
-        self.d_dic_p = {}
-        for n in range(len(track.p_tracks)):
-            self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(4) ]
-            self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(4) ] 
+        self.ionized_pairs = []
+        self.ionized_total_pairs = 0.
 
-    def initial_parameter(self):
-        
-        self.end_cond=0
-        self.d_time=0
-        self.path_len=0
-        self.n_step=0
-        self.charge=0
-
-    def delta_p(self): 
-        # magnetic field effect
-        if(self.charg)>0:
-            FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
-        else:
-            FF=self.e_field-self.muhe*np.cross(self.e_field,self.BB)
-        #the delta x with electric field
-        if(np.linalg.norm(FF)!=0):
-            self.delta_x=-self.sstep*self.charg*FF[0]/np.linalg.norm(FF)
-            self.delta_y=-self.sstep*self.charg*FF[1]/np.linalg.norm(FF)
-        else:
-            self.delta_x=0
-            self.delta_y=0 
-
-    def drift_v(self,det,fen):
-
-        my_mobility = Mobility(det.mat_name)
-
-        ex_delta_f = fen.cal_point_field(self.d_x+self.delta_x,self.d_y+self.delta_y,fen.electric_field_x_value)
-        ey_delta_f = fen.cal_point_field(self.d_x+self.delta_x,self.d_y+self.delta_y,fen.electric_field_y_value)
-
-        e_delta_f = np.array([ex_delta_f,ey_delta_f])
-
-        pos = [self.d_x+self.delta_x,self.d_y+self.delta_y]
-
-        aver_e=(np.linalg.norm(self.e_field)+np.linalg.norm(e_delta_f))/2*1e4
-
-        self.v_drift=my_mobility.cal_mobility(det, pos, self.charg, aver_e)*aver_e
-
-        #drift part
-        if(self.v_drift==0):
-            self.delta_x=0.0
-            self.delta_y=0.0
-            self.dif_x=0.0
-            self.dif_y=0.0
-            self.end_cond=9
-        else:
-            #off when the field gets large enough
-            DiffOffField=8  # the silicon value?              
-            if(np.linalg.norm(e_delta_f)<DiffOffField):
-                self.s_time=self.sstep*1e-4/self.v_drift
-                s_sigma=math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charg, aver_e)*det.temperature*self.s_time)
-                self.dif_x=random.gauss(0,s_sigma)*1e4
-                self.dif_y=random.gauss(0,s_sigma)*1e4          
-            else:
-                self.dif_x=0.0
-                self.dif_y=0.0
-
-    def drift_s_step(self,det):
-        # x axis   
-        if((self.d_x+self.delta_x+self.dif_x)>=det.det_width): 
-            self.d_cx = det.det_width
-        elif((self.d_x+self.delta_x+self.dif_x)<0):
-            self.d_cx = 0
-        else:
-            self.d_cx = self.d_x+self.delta_x+self.dif_x
-        # y axis
-        if((self.d_y+self.delta_y+self.dif_y)>=det.det_thin): 
-            self.d_cy = det.det_thin
-        elif((self.d_y+self.delta_y+self.dif_y)<0):
-            self.d_cy = 0
-        else:
-            self.d_cy = self.d_y+self.delta_y+self.dif_y
-
-    def drift_end_condition(self):    
-        if(self.wpot>(1-1e-5)):
-            self.end_cond=1
-        if(self.d_x<=0):
-            self.end_cond=2
-        if(self.d_y<=0):
-            self.end_cond=4
-        if(self.path_len>self.max_drift_len):
-            self.end_cond=6
-        if(self.n_step>10000):
-            self.end_cond=7
-            
-    def save_inf_track(self):
-        e0 = 1.60217733e-19
-        if(self.charge<0):
-            if(self.charg>0):
-                self.d_dic_p["tk_"+str(self.n_track)][0].append(self.d_x)
-                self.d_dic_p["tk_"+str(self.n_track)][1].append(self.d_y)
-                self.d_dic_p["tk_"+str(self.n_track)][2].append(self.charge)
-                self.d_dic_p["tk_"+str(self.n_track)][3].append(self.d_time)
-            else:
-                self.d_dic_n["tk_"+str(self.n_track)][0].append(self.d_x)
-                self.d_dic_n["tk_"+str(self.n_track)][1].append(self.d_y)
-                self.d_dic_n["tk_"+str(self.n_track)][2].append(self.charge)
-                self.d_dic_n["tk_"+str(self.n_track)][3].append(self.d_time)
-
-    def cal_current(self,det,track):
-
-        det.positive_cu.Reset()
-        det.negtive_cu.Reset()
-        det.sum_cu.Reset()
-        self.sum_p_current = []
-        test_p = ROOT.TH1F("test+","test+",det.n_bin,0,det.t_end)
-        test_n = ROOT.TH1F("test-","test-",det.n_bin,0,det.t_end)
-        test_sum = ROOT.TH1F("test sum","test sum",det.n_bin,0,det.t_end)
-        total_pairs = 0
-
-        for j in range(len(track.p_tracks)):
-            for i in range(len(self.d_dic_p["tk_"+str(j+1)][2])):
-                test_p.Fill(self.d_dic_p["tk_"+str(j+1)][3][i],self.d_dic_p["tk_"+str(j+1)][2][i])
-            test_p = Drifts.get_current_his(self,test_p)           
-            for i in range(len(self.d_dic_n["tk_"+str(j+1)][2])):
-                test_n.Fill(self.d_dic_n["tk_"+str(j+1)][3][i],self.d_dic_n["tk_"+str(j+1)][2][i])
-            test_n = Drifts.get_current_his(self,test_n)
-            n_pairs=Drifts.get_energy_loss(self,track.d_tracks[j])
-            total_pairs+=n_pairs
-            test_p.Scale(n_pairs)
-            test_n.Scale(n_pairs)            
-            det.positive_cu.Add(test_p)
-            det.negtive_cu.Add(test_n)
-            test_p.Reset()
-            test_n.Reset()
-
-        laudau_t_pairs = Drifts.get_laudau_dis(self,track)
-        n_scale = laudau_t_pairs/total_pairs
-        det.positive_cu.Scale(n_scale)
-        det.negtive_cu.Scale(n_scale)
-        det.sum_cu.Add(det.positive_cu)
-        det.sum_cu.Add(det.negtive_cu)
-
-    def get_current_his(self,histo):
-        e0 = 1.60217733e-19
-        hist = ROOT.TH1F()
-        histo.Copy(hist)
-        for i in range(hist.GetNbinsX()):
-            histo.SetBinContent(i, hist.GetBinContent(i) \
-                /((hist.GetXaxis().GetXmax() - hist.GetXaxis().GetXmin()) \
-                / hist.GetNbinsX())*e0)
-        return histo
-
-    def get_energy_loss(self,d_drift):
-        #Drift distance: d_drift
+        #Drift distance: self.delta_track
         loss_energy = 8.4 #silicon carbide /um
         Myf = ROOT.TFile("SiC_5um.root")
         hist = Myf.Get("Edep_device")
-        gRandom = ROOT.TRandom3(0)
-        ran_energy = hist.GetRandom(gRandom)
-        n_pairs = d_drift*ran_energy*1e6/(5*loss_energy)
-        return n_pairs
 
-    def get_laudau_dis(self,track):
+        for i in range(len(self.track_position)):
+            
+            gRandom = ROOT.TRandom3(0)
+            ran_energy = hist.GetRandom(gRandom)
+            n_pairs = self.delta_track[i]*ran_energy*1e6/(5*loss_energy)
+            self.ionized_pairs.append(n_pairs)
+            self.ionized_total_pairs += n_pairs
+
+
+    def mips_laudau(self):
+
         loss_energy = 8.4
-        d_x = math.pow(track.p_exit[0]-track.p_entry[0],2)
-        d_y = math.pow(track.p_exit[1]-track.p_entry[1],2)
+        d_x = math.pow(self.track_exit[0]-self.track_entry[0],2)
+        d_y = math.pow(self.track_exit[1]-self.track_entry[1],2)
         d_dis = math.sqrt(d_x+d_y)
         d_mpv = 0.04 * math.log(d_dis) + 0.27
         d_FWHM = 0.31 * math.pow(d_dis, -0.17)
@@ -675,60 +610,298 @@ class Drifts:
         if (LanConst > 5.0 * d_mpv):
             LanConst = gRandom.Landau(d_mpv, d_da)
         Lan_pairs = LanConst*1000/loss_energy*d_dis
+
         return Lan_pairs
 
-    def ionized_drift(self,track,fen,det):       
-        for i in range(len(track.p_tracks)):
-            self.n_track=i+1
+
+    # Laser-TCT...
+
+    # TPA-TCT...
+
+
+
+
+""" Define Carriers Drifts """
+
+class Drifts:
+
+    def __init__(self,track):
+
+        # initial tracks
+        self.delta_track_info_dic_n = {}
+        self.delta_track_info_dic_p = {}
+
+        # gain tracks
+        self.delta_gain_track_info_dic_n = {}
+        self.delta_gain_track_info_dic_p = {}
+
+        self.track_time = 0.
+        self.track_x = 0.
+        self.track_y = 0.
+        self.track_charges = 0.
+        self.track_current = 0.
+
+        self.end_condition = 0
+
+        self.delta_x=0.
+        self.delta_y=0.
+        self.diff_x=0.
+        self.diff_y=0.
+
+        self.s_time = 0.
+
+        for n in range(len(track.track_position)):
+
+            # initial tracks
+            self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]   # track_time, track_x, track_y, track_charges, track_current
+            self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
+
+            # gain tracks
+            self.delta_gain_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
+            self.delta_gain_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
+
+    
+    def drift_diffusion(self,det,fen):
+
+        my_mobility = Mobility(det.mat_name)
+
+        self.muhh=1650   # mobility related with the magnetic field (now silicon useless)
+        self.muhe=310
+        self.BB=np.array([0,0])
+        self.sstep=0.1 # drift step
+        self.kboltz=8.617385e-5 # eV/K
+        self.max_drift_len=1e9 # maximum driftlength [um]
+
+        self.delta_x=0.
+        self.delta_y=0. 
+        
+
+        #
+        # drift
+        #
+
+        # magnetic field effect
+
+        # for hole
+        if(self.charges)>0:
+            FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
+        # for electron    
+        else:
+            FF=self.e_field-self.muhe*np.cross(self.e_field,self.BB)
+
+        # the delta x with electric field and magnetic field for unit e or h
+
+        if(np.linalg.norm(FF)!=0):
+            self.delta_x = self.sstep*(self.charges/abs(self.charges))*FF[0]/np.linalg.norm(FF)
+            self.delta_y = self.sstep*(self.charges/abs(self.charges))*FF[1]/np.linalg.norm(FF)
+        else:
+            self.delta_x=0
+            self.delta_y=0 
+
+        # cal current step ef & wef
+        efx = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.electric_field_x_value)
+        efy = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.electric_field_y_value)
+        ef = np.array([efx,efy])
+
+        ef_value = np.linalg.norm(ef)*1e4 #V/cm
+
+        wefx = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.weighting_electric_field_x_value)
+        wefy = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.weighting_electric_field_y_value)
+        wef = np.array([wefx,wefy])
+
+        self.wef_value = np.linalg.norm(wef)
+
+
+        pos = [self.track_x+self.delta_x, self.track_y+self.delta_y]
+
+        self.drift_velocity = my_mobility.cal_mobility(det, pos, self.charges, ef_value)*ef_value
+        # print(self.drift_velocity)
+
+        self.e_field = ef
+        self.we_field = wef
+
+        #
+        # diffusion
+        #
+        if(self.drift_velocity == 0):
+            self.delta_x=0
+            self.delta_y=0
+            self.diff_x=0
+            self.diff_y=0
+        else:
+            DiffOffField=8*1e4 #V/cm
+            if(ef_value<DiffOffField):
+                self.s_time=self.sstep*1e-4/self.drift_velocity
+                s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
+                self.dif_x=random.gauss(0,s_sigma)*1e4
+                self.dif_y=random.gauss(0,s_sigma)*1e4
+            else:
+                self.dif_x=0.0
+                self.dif_y=0.0 
+
+    def update_track_info(self):
+
+        if(self.charges>0):
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][0].append(self.track_time)
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][1].append(self.track_x)
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][2].append(self.track_y)
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][3].append(self.track_charges)
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][4].append(self.track_current)
+ 
+        if(self.charges<0):
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][0].append(self.track_time)
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][1].append(self.track_x)
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][2].append(self.track_y)
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][3].append(self.track_charges)
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][4].append(self.track_current)
+
+        #if(self.charges==0):
+
+
+    def update_step(self,det):
+
+        self.track_time = self.track_time + self.s_time
+        self.track_x = self.track_x + self.delta_x + self.diff_x
+        self.track_y = self.track_y + self.delta_y + self.diff_y
+        self.track_charges = self.charges
+
+        if(self.track_x>=det.det_width):
+            self.track_x = det.det_width
+        
+        if(self.track_x<0):
+            self.track_x = 0
+
+        if(self.track_y>=det.det_thin):
+            self.track_y = det.det_thin
+        
+        if(self.track_y<0):
+            self.track_y = 0
+        
+    def update_end_condition(self):
+
+        # if(self.we_field>(1-1e-5)):
+        #     self.end_condition=1
+        if(self.track_x<=0):
+            self.end_condition=2
+        if(self.track_y<=0):
+            self.end_condition=3
+        else: 
+            self.end_condition=0
+            
+        # if(self.path_len>self.max_drift_len):
+        #     self.end_condition=6
+        # if(self.n_step>10000):
+        #     self.end_condition=7
+        
+
+    def cal_current(self, track, fen, det):
+
+        track.mips_ionized()
+        
+        for i in range(len(track.track_position)):
+
+            self.track_number = i+1
+
             for j in range(2):
-                if (j==0):
-                    self.charg=1 #hole
-                if (j==1):
-                    self.charg=-1 #electron
-                Drifts.initial_parameter(self)
-                #generated particles positions
-                self.d_x=track.p_tracks[i][0]#initial position
-                self.d_y=track.p_tracks[i][1]
-                while (self.end_cond==0):
-                    if (self.d_y>=(det.det_thin-1) or self.d_x>=(det.det_width-1)):
-                        self.end_cond=3  
-                    else:                                       
-                        # field of the position
-                        ex_field = fen.cal_point_field(self.d_x,self.d_y,fen.electric_field_x_value)
-                        ey_field = fen.cal_point_field(self.d_x,self.d_y,fen.electric_field_y_value)
-                        self.e_field = np.array([ex_field,ey_field])
-                        #delta_poisiton
-                        Drifts.delta_p(self)
-                        #drift_position
-                        Drifts.drift_v(self,det,fen)
-                        #drift_next_posiiton
-                        Drifts.drift_s_step(self,det)
-                        #charge_collection
-                        delta_Ew=fen.cal_point_field(self.d_cx,self.d_cy,fen.weighting_potential_value_2d)-fen.cal_point_field(self.d_x,self.d_y,fen.weighting_potential_value_2d)
-                        self.charge=self.charg*delta_Ew
-                        if(self.v_drift!=0):
-                            self.d_time=self.d_time+self.s_time
-                            self.path_len+=self.sstep
-                        self.d_x=self.d_cx
-                        self.d_y=self.d_cy
-                        self.wpot=fen.cal_point_field(self.d_x,self.d_y,fen.weighting_potential_value_2d)
-                        Drifts.save_inf_track(self)  
-                        Drifts.drift_end_condition(self)                                                                         
-                    self.n_step+=1
 
-        Drifts.cal_current(self,det,track)
+                if(j==0):
+                    self.charges=1*track.ionized_pairs[i] # hole
 
+                if(j==1):
+                    self.charges=-1*track.ionized_pairs[i] # electron
+                
+                self.track_time = 0.
+                self.track_x = track.track_position[i][0]
+                self.track_y = track.track_position[i][1]
+                self.track_charges = 0.
+                self.track_current = 0.
+
+                #print("current position "+str(i)+" : "+str(self.track_x)+","+str(self.track_y))
+                
+                
+                # print(self.end_condition)
+                self.end_condition = 0
+                while(self.end_condition==0):
+
+                    if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                         
+                        self.end_condition=4
+
+                    else:
+                        efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
+                        efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
+
+                        ef = np.array([efx,efy])
+                        ef_value = np.linalg.norm(ef)*1e4
+
+                        self.e_field = np.array([efx,efy])
+
+                        wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
+                        wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
+
+                        wef = np.array([wefx,wefy])
+                        wef_value = np.linalg.norm(wef)*1e4
+
+                        self.we_field = np.array([wefx,wefy])                                
+
+                        self.drift_diffusion(det,fen)
+
+                        # SR current
+
+                        self.track_current = abs(self.charges*self.drift_velocity*wef_value)
+
+                        self.update_track_info()
+                        self.update_step(det)
+                        self.update_end_condition()
+
+        det.positive_cu.Reset()
+        det.negtive_cu.Reset()
+        det.sum_cu.Reset()
+
+        temp_positive_cu = ROOT.TH1F("temp+","temp+",det.n_bin,0,det.t_end)
+        temp_negitive_cu = ROOT.TH1F("temp-","temp-",det.n_bin,0,det.t_end)
+        temp_sum_cu = ROOT.TH1F("temp_sum","temp_sum",det.n_bin,0,det.t_end)
+
+
+        for i in range(len(track.track_position)):
+
+            for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
+                temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(i+1)][0][j], self.delta_track_info_dic_p["tk_"+str(i+1)][4][j])
+
+            for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
+                temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
+
+            det.positive_cu.Add(temp_positive_cu)
+            det.negtive_cu.Add(temp_negitive_cu)
+
+            temp_positive_cu.Reset()
+            temp_negitive_cu.Reset()
+
+
+        det.sum_cu.Add(det.positive_cu)
+        det.sum_cu.Add(det.negtive_cu)
+
+        laudau_pairs = track.mips_laudau()
+
+        current_scale = laudau_pairs/track.ionized_total_pairs
+
+        det.positive_cu.Scale(current_scale)
+        det.negtive_cu.Scale(current_scale)
+        det.sum_cu.Scale(current_scale)
+        
+                            
+        
     def draw_drift_path(self,det):
         # ROOT.gStyle.SetOptStat(0)
         c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 1000)
         mg = ROOT.TMultiGraph("mg","")
         x_array=array('f')
         y_array=array('f')
-        for i in range(len(self.d_dic_p)):
-            n=len(self.d_dic_p["tk_"+str(i+1)][0])
+        for i in range(len(self.delta_track_info_dic_p)):
+            n=len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])
             if(n>0):
-                x_array.extend(self.d_dic_p["tk_"+str(i+1)][0])
-                y_array.extend(self.d_dic_p["tk_"+str(i+1)][1])             
+                x_array.extend(self.delta_track_info_dic_p["tk_"+str(i+1)][1])
+                y_array.extend(self.delta_track_info_dic_p["tk_"+str(i+1)][2])             
                 gr_p = ROOT.TGraph(n,x_array,y_array)
                 gr_p.SetMarkerColor(4)
                 gr_p.SetLineColor(4)
@@ -736,11 +909,11 @@ class Drifts:
                 mg.Add(gr_p)
                 del x_array[:]
                 del y_array[:]
-        for j in range(len(self.d_dic_n)):
-            m=len(self.d_dic_n["tk_"+str(j+1)][0])
+        for j in range(len(self.delta_track_info_dic_n)):
+            m=len(self.delta_track_info_dic_n["tk_"+str(j+1)][0])
             if(m>0):
-                x_array.extend(self.d_dic_n["tk_"+str(j+1)][0])
-                y_array.extend(self.d_dic_n["tk_"+str(j+1)][1])             
+                x_array.extend(self.delta_track_info_dic_n["tk_"+str(j+1)][1])
+                y_array.extend(self.delta_track_info_dic_n["tk_"+str(j+1)][2])             
                 gr_n = ROOT.TGraph(m,x_array,y_array)
                 gr_n.SetMarkerColor(2)
                 gr_n.SetLineColor(2)
@@ -798,16 +971,24 @@ class Amplifier:
 def draw_current(det,ele_current,qtot,drift):
 
     ROOT.gStyle.SetOptStat(0)
-    c = ROOT.TCanvas("c", "canvas", 200,10,1000, 1000)
-    c.SetLeftMargin(0.12)
-    c.SetRightMargin(0.12)
-    # c.SetTopMargin(0.12)
-    c.SetBottomMargin(0.14)
-    det.sum_cu.GetXaxis().SetTitleOffset(1.2)
+    c = ROOT.TCanvas("c", "canvas", 200,10,2000, 1000)
+    c.Divide(2,1)
+
+    c.cd(1)
+    c.GetPad(1).SetLeftMargin(0.12)
+    c.GetPad(1).SetRightMargin(0.12)
+    # c.GetPad(1).SetTopMargin(0.12)
+    c.GetPad(1).SetBottomMargin(0.14)
+    # det.sum_cu.GetXaxis().SetTitleOffset(1.2)
+
+    det.sum_cu.SetLineColor(1)
+    det.positive_cu.SetLineColor(2)
+    det.negtive_cu.SetLineColor(4)
+
     det.sum_cu.GetXaxis().SetTitleSize(0.05)
     det.sum_cu.GetXaxis().SetLabelSize(0.04)
     det.sum_cu.GetXaxis().SetNdivisions(510)
-    det.sum_cu.GetYaxis().SetTitleOffset(1.1)
+    # det.sum_cu.GetYaxis().SetTitleOffset(1.1)
     det.sum_cu.GetYaxis().SetTitleSize(0.05)
     det.sum_cu.GetYaxis().SetLabelSize(0.04)
     det.sum_cu.GetYaxis().SetNdivisions(505)
@@ -816,39 +997,43 @@ def draw_current(det,ele_current,qtot,drift):
     det.sum_cu.GetXaxis().SetTitle("Time [s]")
     det.sum_cu.GetYaxis().SetTitle("Current [A]")
     det.sum_cu.Draw("HIST")
-    #det.positive_cu.Draw("SAME HIST")
-    #det.negtive_cu.Draw("SAME HIST")
+    det.positive_cu.Draw("SAME HIST")
+    det.negtive_cu.Draw("SAME HIST")
     c.Update()
-    rightmax = 1.1*ele_current.GetMinimum()
-    n_scale = ROOT.gPad.GetUymin() / rightmax
-    ele_current.Scale(n_scale)
-    ele_current.Draw("SAME HIST")
-    det.sum_cu.SetLineColor(3)
-    det.positive_cu.SetLineColor(2)
-    det.negtive_cu.SetLineColor(4)
+
+    # rightmax = 1.1*ele_current.GetMinimum()
+    # n_scale = ROOT.gPad.GetUymin() / rightmax
+    # ele_current.Scale(n_scale)
+    c.cd(2)
+    ele_current.Draw("HIST")
+
+
     ele_current.SetLineColor(6)
     det.sum_cu.SetLineWidth(2)
     det.positive_cu.SetLineWidth(2)
     det.negtive_cu.SetLineWidth(2)
-    ele_current.SetLineWidth(2)    
-    axis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), rightmax, 0, 510, "+L")
-    axis.SetLineColor(6)
-    axis.SetTextColor(6)
-    axis.SetTextSize(0.02)
-    axis.SetLabelColor(6)
-    axis.SetLabelSize(0.02)
-    axis.SetTitle("Ampl [mV]")
-    axis.CenterTitle()
-    axis.Draw("same")
-
+    ele_current.SetLineWidth(2)
+ 
+    # axis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(),# rightmax, 0, 510, "+L")
+    # axis.SetLineColor(6)
+    # axis.SetTextColor(6)
+    # axis.SetTextSize(0.02)
+    # axis.SetLabelColor(6)
+    # axis.SetLabelSize(0.02)
+    # axis.SetTitle("Ampl [mV]")
+    # axis.CenterTitle()
+    # axis.Draw("same")
+# 
     legend = ROOT.TLegend(0.5, 0.3, 0.8, 0.6)
     legend.AddEntry(det.negtive_cu, "electron", "l")
     legend.AddEntry(det.positive_cu, "hole", "l")
     legend.AddEntry(det.sum_cu, "e+h", "l")
-    legend.AddEntry(ele_current, "electronics", "l")
+    # legend.AddEntry(ele_current, "electronics", "l")
     legend.SetBorderSize(0)
     legend.SetTextFont(43)
     legend.SetTextSize(40)
+
+    c.cd(1)
     legend.Draw("same")
 
     c.Update()
@@ -858,6 +1043,7 @@ def draw_current(det,ele_current,qtot,drift):
         * ((det.sum_cu.GetXaxis().GetXmax() \
         - det.sum_cu.GetXaxis().GetXmin()) \
         / det.sum_cu.GetNbinsX()) * 1e15
+    
     print(charge_t)
     print(qtot*1e15)
     drift.draw_drift_path(det)
@@ -868,7 +1054,7 @@ def main():
     model = args[0]
 
     # define geometry
-    my_det = R2dDetector(100,100) # [um]
+    my_det = R2dDetector(50,50) # [um]
 
     # set material
     my_sic_mat = Material('SiC')
@@ -876,13 +1062,13 @@ def main():
 
     # set doping
     if model == "LGAD":
-        my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*((1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
     if model == "PIN":
-        twoD_time()
+        my_det.set_doping("1e13*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12")
 
     # set operating condition
     my_det.set_temperature(300) # [K]
-    my_det.set_bias_voltage(-200) # [V]
+    my_det.set_bias_voltage(200) # [V]
 
     # mesh
     my_det.mesh(0.1, 0.1) # [um]
@@ -890,17 +1076,26 @@ def main():
     # calculate electric field
     my_possion_solver = FenicsPossion(my_det)
     my_possion_solver.solve()
-    my_possion_solver.draw()
+    # my_possion_solver.draw()
 
     my_track = Tracks()
-    my_track.mips([50,0],[50,my_det.det_thin],100)
+    
+    my_track.mips([25,0],[25,my_det.det_thin],100)
+    # print(my_track.track_position)
+ 
+    my_drift = Drifts(my_track)
+    my_drift.cal_current(my_track,my_possion_solver,my_det)
 
-    drift = Drifts(my_track)
-    drift.ionized_drift(my_track,my_possion_solver,my_det)
-    ### after the electronics
+    #print(my_drift.delta_track_info_dic_n)
+    #print(my_drift.delta_track_info_dic_p)
+
+    # after the electronics
     my_electronics = Amplifier()
     qtot,ele_current=my_electronics.CSA_amp(my_det,t_rise=0.4,t_fall=0.2,trans_imp=10)
-    draw_current(my_det,ele_current,qtot,drift)
+    
+    my_drift.draw_drift_path(my_det)
+
+    draw_current(my_det,ele_current,qtot,my_drift)
 
 
 
