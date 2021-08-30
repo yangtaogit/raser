@@ -3,9 +3,8 @@ from array import array
 import numpy as np
 import math
 import ROOT
-from ROOT import TCanvas, gStyle, TTree, THStack, TH1D
-from ROOT import TFile, TH1F, TLegend, TArrow, TGraph
-import sys,os
+import sys
+import os
 
 def GetH1D(t):
     nb = t.GetSelectedRows()
@@ -48,12 +47,12 @@ def temp_plt_Vmax_pin():
     t_data1 = simfile.Get("tree")
     entries_data = t_data1.GetEntries()
     t_data1.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim = GetH1D(t_data1)
+    tmp,h_sim = ROOT.GetH1D(t_data1)
     set_hist_style(h_sim,xtitle,ytitle,1)
 
     t_data2 = datafile.Get("edge")
     t_data2.Draw('(-Vmin*1e3):((z*1e3)-11985)',"Vbias==-120")
-    tmp,h_data = GetH1D(t_data2)
+    tmp,h_data = ROOT.GetH1D(t_data2)
     set_hist_style(h_data,xtitle,ytitle,2)
 
     h_sim.Draw()
@@ -84,52 +83,52 @@ def draw_vmax_difV():
 
     t_data1 = sim1.Get("tree")
     t_data1.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim1 = GetH1D(t_data1)
+    tmp,h_sim1 = ROOT.GetH1D(t_data1)
     set_hist_style(h_sim1,xtitle,ytitle,1)
 
     t_data2 = sim2.Get("tree")
     t_data2.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim2 = GetH1D(t_data2)
+    tmp,h_sim2 = ROOT.GetH1D(t_data2)
     set_hist_style(h_sim2,xtitle,ytitle,2)
 
     t_data3 = sim3.Get("tree")
     t_data3.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim3 = GetH1D(t_data3)
+    tmp,h_sim3 = ROOT.GetH1D(t_data3)
     set_hist_style(h_sim3,xtitle,ytitle,3)
 
     t_data4 = sim4.Get("tree")
     t_data4.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim4 = GetH1D(t_data4)
+    tmp,h_sim4 = ROOT.GetH1D(t_data4)
     set_hist_style(h_sim4,xtitle,ytitle,4)
 
     t_data5 = sim5.Get("tree")
     t_data5.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim5 = GetH1D(t_data5)
+    tmp,h_sim5 = ROOT.GetH1D(t_data5)
     set_hist_style(h_sim5,xtitle,ytitle,5)
 
     t_data6 = sim6.Get("tree")
     t_data6.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim6 = GetH1D(t_data6)
+    tmp,h_sim6 = ROOT.GetH1D(t_data6)
     set_hist_style(h_sim6,xtitle,ytitle,6)
 
     t_data7 = sim7.Get("tree")
     t_data7.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim7 = GetH1D(t_data7)
+    tmp,h_sim7 = ROOT.GetH1D(t_data7)
     set_hist_style(h_sim7,xtitle,ytitle,7)
     
     t_data8 = sim8.Get("tree")
     t_data8.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim8 = GetH1D(t_data8)
+    tmp,h_sim8 = ROOT.GetH1D(t_data8)
     set_hist_style(h_sim8,xtitle,ytitle,8)
     
     t_data9 = sim9.Get("tree")
     t_data9.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim9 = GetH1D(t_data9)
+    tmp,h_sim9 = ROOT.GetH1D(t_data9)
     set_hist_style(h_sim9,xtitle,ytitle,9)
     
     t_data10 = sim10.Get("tree")
     t_data10.Draw('(-v*1.3e2):(z)')
-    tmp,h_sim10 = GetH1D(t_data10)
+    tmp,h_sim10 = ROOT.GetH1D(t_data10)
     set_hist_style(h_sim10,xtitle,ytitle,11)
 
     h_sim10.Draw()
