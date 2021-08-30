@@ -91,11 +91,10 @@ case $option in
 	    python3 python/raser.py 2D_LASER_SI_PIN
 		;;
     0.3.4) echo "vmax compre"
-        mkdir figure/ -p
-        python3 python/draw_Vmax_com.py pin_compre
+        python3 python/draw.py pin_compre
         ;;
     0.3.5) echo "vmax compre"
-        python3 python/draw_Vmax_com.py pin_vbias
+        python3 python/draw.py pin_vbias
         ;;
 		esac
 }
