@@ -109,7 +109,7 @@ case $option in
 		
 
     0.3.2) echo "raser 2D lgad electric field..."
-		python3 python/raser.py 2D_SiC_LGAD
+		python3 python/raser_lgad.py 2D_SiC_LGAD
     	;;
 		esac
 }

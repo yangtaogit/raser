@@ -86,8 +86,8 @@ class Mobility:
 
         x = position[0]
         y = position[1]
-        T = det.temperature
-        E = electric_field
+        T = det.temperature # K
+        E = electric_field  # V/cm
 
         doping_expr = det.doping_epr
         doping_expr = doping_expr.replace("x[1]","y")
@@ -148,9 +148,9 @@ class Avalanche:
     def __init__(self,model_name):
         self.model_name = model_name
 
-    def cal_coefficient(self, electric_field, charge_polarity, temperature):
+    def cal_coefficient(self, electric_field, charges, temperature):
 
-        coefficient = 1.0
+        coefficient = 0.
 
         E = electric_field # V/cm
         T = temperature # K
@@ -164,7 +164,7 @@ class Avalanche:
             k_T0 = 0.0257 # eV
 
             # electron
-            if( charge_polarity == -1 ): 
+            if( charges < 0 ): 
 
                 a_low = 7.03e5 # cm-1
                 a_high = 7.03e5 # cm-1
@@ -181,7 +181,7 @@ class Avalanche:
                 # beta_high = 0.678925 # 1
 
             # hole
-            if( charge_polarity == 1 ): 
+            if( charges > 0 ): 
 
                 a_low = 1.582e6 # cm-1
                 a_high = 6.71e5 # cm-1
@@ -195,18 +195,16 @@ class Avalanche:
                 beta_high =  0.677706 # 1
 
             Ggamma = math.tanh(hbarOmega/(2*k_T0))/math.tanh(hbarOmega/(2*k_T0*T/T0))
-
-            if(E>E0):
-                coefficient = Ggamma*a_high*math.exp(-(Ggamma*b_high)/E)
+            
+            if(E>1.75e05):
+                if(E>E0):
+                    coefficient = Ggamma*a_high*math.exp(-(Ggamma*b_high)/E)
+                else:
+                    coefficient = Ggamma*a_low*math.exp(-(Ggamma*b_low)/E)
             else:
-                coefficient = Ggamma*a_low*math.exp(-(Ggamma*b_low)/E)
-        
+                coefficient = 0.
 
         return coefficient
-
-
-
-
 
 
 
@@ -224,7 +222,10 @@ class R2dDetector:
         self.t_end = 3e-9
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
-        self.sum_cu = ROOT.TH1F("charge","Current",self.n_bin,0,self.t_end)
+        self.gain_positive_cu = ROOT.TH1F("gain_charge+","Current Contribution",self.n_bin,0,self.t_end)
+        self.gain_negtive_cu = ROOT.TH1F("gain_charge-","Gain Negative Current",self.n_bin,0,self.t_end)
+
+        self.sum_cu = ROOT.TH1F("charge","Total Current",self.n_bin,0,self.t_end)
     
     def mesh(self,x_step,y_step):
 
@@ -456,10 +457,10 @@ class FenicsPossion:
         else:
             r_t=e_v_y1/y_step
 
-        value_11=input_value[nx1_v][ny1_v]
-        value_21=input_value[nx2_v][ny1_v]
-        value_12=input_value[nx1_v][ny2_v]
-        value_22=input_value[nx2_v][ny2_v]
+        value_11=input_value[ny1_v][nx1_v]
+        value_21=input_value[ny1_v][nx2_v]
+        value_12=input_value[ny1_v][nx1_v]
+        value_22=input_value[ny1_v][nx2_v]
         out_field=0.0
         out_field=(1-r_u)*(1-r_t)*value_11
         out_field+=r_u*(1-r_t)*value_21
@@ -477,15 +478,23 @@ class FenicsPossion:
 
     def draw(self):
 
-        cutline = int(self.det.nx/2)
+        cutline = int(self.det.nx/2.0)
 
         # plot electric field at x = middle
         ep = array( 'd' )
         ev = array( 'd' )
 
         for i in range(self.det.ny):
+
             ep.append(self.electric_field_y_position[i][cutline])
-            ev.append(self.electric_field_y_value[i][cutline])
+
+            efx = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_x_value)
+            efy = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_y_value)
+            ef = np.array([efx,efy])
+
+            ef_value = np.linalg.norm(ef)#*1e4 #V/cm
+
+            ev.append(ef_value)
 
         # print(ep)
         # print(ev)
@@ -632,8 +641,11 @@ class Drifts:
         self.delta_track_info_dic_p = {}
 
         # gain tracks
-        self.delta_gain_track_info_dic_n = {}
-        self.delta_gain_track_info_dic_p = {}
+        # self.delta_gain_track_info_dic_n_n = {}
+        # self.delta_gain_track_info_dic_n_p = {}
+        # self.delta_gain_track_info_dic_p_n = {}
+        # self.delta_gain_track_info_dic_p_p = {}
+        self.delta_gain_track_info_dic = {}
 
         self.track_time = 0.
         self.track_x = 0.
@@ -650,15 +662,19 @@ class Drifts:
 
         self.s_time = 0.
 
+        self.s_gain = 1.
+
         for n in range(len(track.track_position)):
 
             # initial tracks
-            self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]   # track_time, track_x, track_y, track_charges, track_current
-            self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
+            self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(6) ]   # track_time, track_x, track_y, track_charges, track_current, track_gain
+            self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(6) ] 
 
             # gain tracks
-            self.delta_gain_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
-            self.delta_gain_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
+            # self.delta_gain_track_info_dic_n_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
+            # self.delta_gain_track_info_dic_n_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
+            # self.delta_gain_track_info_dic_p_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
+            # self.delta_gain_track_info_dic_p_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
 
     
     def drift_diffusion(self,det,fen):
@@ -728,16 +744,32 @@ class Drifts:
             self.delta_y=0
             self.diff_x=0
             self.diff_y=0
+            self.end_condition = 9
         else:
             DiffOffField=8*1e4 #V/cm
             if(ef_value<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.drift_velocity
                 s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
-                self.dif_x=random.gauss(0,s_sigma)*1e4
-                self.dif_y=random.gauss(0,s_sigma)*1e4
+                # self.dif_x=random.gauss(0,s_sigma)*1e4
+                # self.dif_y=random.gauss(0,s_sigma)*1e4
+                self.dif_x=0.
+                self.dif_y=0.
+
             else:
                 self.dif_x=0.0
                 self.dif_y=0.0 
+
+
+        #
+        # multiplication
+        #
+        my_avalanche = Avalanche('vanOverstraeten')
+        tmp_coefficient = my_avalanche.cal_coefficient(ef_value,self.charges,det.temperature)
+
+        self.s_gain = math.exp(self.sstep*1e-4*tmp_coefficient)
+
+        
+
 
     def update_track_info(self):
 
@@ -747,6 +779,7 @@ class Drifts:
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][2].append(self.track_y)
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][3].append(self.track_charges)
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][4].append(self.track_current)
+            self.delta_track_info_dic_p["tk_"+str(self.track_number)][5].append(self.track_gain)
  
         if(self.charges<0):
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][0].append(self.track_time)
@@ -754,8 +787,15 @@ class Drifts:
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][2].append(self.track_y)
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][3].append(self.track_charges)
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][4].append(self.track_current)
+            self.delta_track_info_dic_n["tk_"+str(self.track_number)][5].append(self.track_gain)
 
-        #if(self.charges==0):
+    def update_gain_track_info(self):
+        
+        self.delta_gain_track_info_dic[self.track_name][0].append(self.track_time)
+        self.delta_gain_track_info_dic[self.track_name][1].append(self.track_x)
+        self.delta_gain_track_info_dic[self.track_name][2].append(self.track_y)
+        self.delta_gain_track_info_dic[self.track_name][3].append(self.track_charges)
+        self.delta_gain_track_info_dic[self.track_name][4].append(self.track_current)
 
 
     def update_step(self,det):
@@ -764,6 +804,8 @@ class Drifts:
         self.track_x = self.track_x + self.delta_x + self.diff_x
         self.track_y = self.track_y + self.delta_y + self.diff_y
         self.track_charges = self.charges
+        self.track_gain *= self.s_gain
+
 
         if(self.track_x>=det.det_width):
             self.track_x = det.det_width
@@ -785,8 +827,8 @@ class Drifts:
             self.end_condition=2
         if(self.track_y<=0):
             self.end_condition=3
-        else: 
-            self.end_condition=0
+        # else: 
+        #     self.end_condition=0
             
         # if(self.path_len>self.max_drift_len):
         #     self.end_condition=6
@@ -796,6 +838,10 @@ class Drifts:
 
     def cal_current(self, track, fen, det):
 
+
+        #
+        # initial carrier track
+        #
         track.mips_ionized()
         
         for i in range(len(track.track_position)):
@@ -815,6 +861,7 @@ class Drifts:
                 self.track_y = track.track_position[i][1]
                 self.track_charges = 0.
                 self.track_current = 0.
+                self.track_gain = 1.
 
                 #print("current position "+str(i)+" : "+str(self.track_x)+","+str(self.track_y))
                 
@@ -848,21 +895,119 @@ class Drifts:
 
                         # SR current
 
-                        self.track_current = abs(self.charges*self.drift_velocity*wef_value)
+                        self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
 
                         self.update_track_info()
                         self.update_step(det)
                         self.update_end_condition()
 
+
+        #
+        # gian carrier track
+        #
+
+        # get gain tracks start info
+        self.gain_track_info_list = [] #[[name,time,x,y,charges]]
+
+        for i in range(len(track.track_position)):
+
+            for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
+                
+                if(self.delta_track_info_dic_p["tk_"+str(i+1)][5][j]>1.0):
+
+                    tmp_gain_time = self.delta_track_info_dic_p["tk_"+str(i+1)][0][j]
+                    tmp_gain_x = self.delta_track_info_dic_p["tk_"+str(i+1)][1][j]
+                    tmp_gain_y = self.delta_track_info_dic_p["tk_"+str(i+1)][2][j]
+                    tmp_gain_pairs = abs(self.delta_track_info_dic_p["tk_"+str(i+1)][3][j]*(np.max(self.delta_track_info_dic_p["tk_"+str(i+1)][5])-1))
+                    tmp_gain_current = 0.
+
+                    self.gain_track_info_list.append(["tk_"+str(i+1)+"_p_n",tmp_gain_time,tmp_gain_x,tmp_gain_y,-tmp_gain_pairs])
+
+                    self.gain_track_info_list.append(["tk_"+str(i+1)+"_p_p",tmp_gain_time,tmp_gain_x,tmp_gain_y,tmp_gain_pairs])
+
+                    self.delta_gain_track_info_dic["tk_"+str(i+1)+"_p_n"] = [ [] for n in range(5) ]
+                    self.delta_gain_track_info_dic["tk_"+str(i+1)+"_p_p"] = [ [] for n in range(5) ]
+
+                    break
+
+            for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
+
+                if(self.delta_track_info_dic_n["tk_"+str(i+1)][5][k]>1.0):
+
+                    tmp_gain_time = self.delta_track_info_dic_n["tk_"+str(i+1)][0][k]
+                    tmp_gain_x = self.delta_track_info_dic_n["tk_"+str(i+1)][1][k]
+                    tmp_gain_y = self.delta_track_info_dic_n["tk_"+str(i+1)][2][k]
+                    tmp_gain_pairs = abs(self.delta_track_info_dic_n["tk_"+str(i+1)][3][k]*(np.max(self.delta_track_info_dic_n["tk_"+str(i+1)][5])-1))
+                    tmp_gain_current = 0.
+
+                    self.gain_track_info_list.append(["tk_"+str(i+1)+"_n_n",tmp_gain_time,tmp_gain_x,tmp_gain_y,-tmp_gain_pairs])
+
+                    self.gain_track_info_list.append(["tk_"+str(i+1)+"_n_p",tmp_gain_time,tmp_gain_x,tmp_gain_y,tmp_gain_pairs])
+
+                    self.delta_gain_track_info_dic["tk_"+str(i+1)+"_n_n"] = [ [] for n in range(5) ]
+                    self.delta_gain_track_info_dic["tk_"+str(i+1)+"_n_p"] = [ [] for n in range(5) ]
+
+                    break
+
+        #
+        # cal gain current
+        #
+
+        for i in range(len(self.gain_track_info_list)):
+
+            self.charges = self.gain_track_info_list[i][4]
+
+            self.track_name = self.gain_track_info_list[i][0]
+            self.track_time = self.gain_track_info_list[i][1]
+            self.track_x = self.gain_track_info_list[i][2]
+            self.track_y = self.gain_track_info_list[i][3]
+            self.track_charges = self.gain_track_info_list[i][4]
+            self.track_current = 0.
+
+            self.end_condition = 0
+            while(self.end_condition==0):
+
+                if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                     
+                    self.end_condition=4
+
+                else:
+                    efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
+                    efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
+                    ef = np.array([efx,efy])
+                    ef_value = np.linalg.norm(ef)*1e4
+                    self.e_field = np.array([efx,efy])
+                    wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
+                    wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
+                    wef = np.array([wefx,wefy])
+                    wef_value = np.linalg.norm(wef)*1e4
+                    self.we_field = np.array([wefx,wefy])
+                                                   
+                    self.drift_diffusion(det,fen)
+                    # SR current
+                    self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
+
+                    self.update_gain_track_info()
+                    self.update_step(det)
+                    self.update_end_condition()            
+
+
         det.positive_cu.Reset()
         det.negtive_cu.Reset()
+
+        det.gain_positive_cu.Reset()
+        det.gain_negtive_cu.Reset()
+
+
         det.sum_cu.Reset()
 
         temp_positive_cu = ROOT.TH1F("temp+","temp+",det.n_bin,0,det.t_end)
         temp_negitive_cu = ROOT.TH1F("temp-","temp-",det.n_bin,0,det.t_end)
         temp_sum_cu = ROOT.TH1F("temp_sum","temp_sum",det.n_bin,0,det.t_end)
-
-
+        
+        #
+        # initial current
+        #
         for i in range(len(track.track_position)):
 
             for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
@@ -878,15 +1023,46 @@ class Drifts:
             temp_negitive_cu.Reset()
 
 
+        #
+        # gain current
+        #
+
+        temp_gain_cu = ROOT.TH1F("temp_gain","temp_gain",det.n_bin,0,det.t_end)
+
+        for i in range(len(self.gain_track_info_list)):
+
+            tmp_track_name = self.gain_track_info_list[i][0]
+
+            for j in range(len(self.delta_gain_track_info_dic[tmp_track_name][0])):
+                
+                temp_gain_cu.Fill(self.delta_gain_track_info_dic[tmp_track_name][0][j],self.delta_gain_track_info_dic[tmp_track_name][4][j])
+
+            if(tmp_track_name[-1]=='p'):
+                
+                det.gain_positive_cu.Add(temp_gain_cu)
+
+            if(tmp_track_name[-1]=='n'):
+
+                det.gain_negtive_cu.Add(temp_gain_cu)
+
+            temp_gain_cu.Reset()
+
+
         det.sum_cu.Add(det.positive_cu)
         det.sum_cu.Add(det.negtive_cu)
+        det.sum_cu.Add(det.gain_positive_cu)
+        det.sum_cu.Add(det.gain_negtive_cu)
 
-        laudau_pairs = track.mips_laudau()
+        #laudau_pairs = track.mips_laudau()
+        laudau_pairs = 4000
 
         current_scale = laudau_pairs/track.ionized_total_pairs
 
         det.positive_cu.Scale(current_scale)
         det.negtive_cu.Scale(current_scale)
+        det.gain_positive_cu.Scale(current_scale)
+        det.gain_negtive_cu.Scale(current_scale)
+
         det.sum_cu.Scale(current_scale)
         
                             
@@ -931,6 +1107,7 @@ class Drifts:
 class Amplifier:
     def CSA_amp(self,det,t_rise,t_fall,trans_imp):
         hist = ROOT.TH1F()
+        hist.SetNameTitle("After Amplifier","After Amplifier")
         det.sum_cu.Copy(hist)
         max_num = hist.GetNbinsX()
         preamp_Q = [0.0]*max_num
@@ -971,19 +1148,32 @@ class Amplifier:
 def draw_current(det,ele_current,qtot,drift):
 
     ROOT.gStyle.SetOptStat(0)
-    c = ROOT.TCanvas("c", "canvas", 200,10,2000, 1000)
-    c.Divide(2,1)
+    c = ROOT.TCanvas("c", "canvas",1500,500)
+    c.Divide(3,1)
 
-    c.cd(1)
-    c.GetPad(1).SetLeftMargin(0.12)
-    c.GetPad(1).SetRightMargin(0.12)
-    # c.GetPad(1).SetTopMargin(0.12)
-    c.GetPad(1).SetBottomMargin(0.14)
-    # det.sum_cu.GetXaxis().SetTitleOffset(1.2)
 
     det.sum_cu.SetLineColor(1)
     det.positive_cu.SetLineColor(2)
     det.negtive_cu.SetLineColor(4)
+
+    det.gain_positive_cu.SetLineColor(2)
+    det.gain_negtive_cu.SetLineColor(4)
+
+    det.gain_positive_cu.SetLineStyle(3)
+    det.gain_negtive_cu.SetLineStyle(3) 
+
+    det.gain_positive_cu.GetXaxis().SetTitleSize(0.05)
+    det.gain_positive_cu.GetXaxis().SetLabelSize(0.04)
+    det.gain_positive_cu.GetXaxis().SetNdivisions(510)
+    # det.gain_positive_cu.GetYaxis().SetTitleOffset(1.1)
+    det.gain_positive_cu.GetYaxis().SetTitleSize(0.05)
+    det.gain_positive_cu.GetYaxis().SetLabelSize(0.04)
+    det.gain_positive_cu.GetYaxis().SetNdivisions(505)
+    det.gain_positive_cu.GetXaxis().CenterTitle()
+    det.gain_positive_cu.GetYaxis().CenterTitle()
+    det.gain_positive_cu.GetXaxis().SetTitle("Time [s]")
+    det.gain_positive_cu.GetYaxis().SetTitle("Current [A]")
+    det.gain_positive_cu.GetYaxis().SetRangeUser(0,12e-6)
 
     det.sum_cu.GetXaxis().SetTitleSize(0.05)
     det.sum_cu.GetXaxis().SetLabelSize(0.04)
@@ -996,7 +1186,19 @@ def draw_current(det,ele_current,qtot,drift):
     det.sum_cu.GetYaxis().CenterTitle()
     det.sum_cu.GetXaxis().SetTitle("Time [s]")
     det.sum_cu.GetYaxis().SetTitle("Current [A]")
-    det.sum_cu.Draw("HIST")
+    det.sum_cu.GetYaxis().SetRangeUser(0,12e-6)
+
+
+    c.cd(1)
+    c.GetPad(1).SetLeftMargin(0.12)
+    c.GetPad(1).SetRightMargin(0.12)
+    # c.GetPad(1).SetTopMargin(0.12)
+    c.GetPad(1).SetBottomMargin(0.14)
+    # det.sum_cu.GetXaxis().SetTitleOffset(1.2)
+
+
+    det.gain_positive_cu.Draw("HIST")
+    det.gain_negtive_cu.Draw("SAME HIST")
     det.positive_cu.Draw("SAME HIST")
     det.negtive_cu.Draw("SAME HIST")
     c.Update()
@@ -1005,7 +1207,15 @@ def draw_current(det,ele_current,qtot,drift):
     # n_scale = ROOT.gPad.GetUymin() / rightmax
     # ele_current.Scale(n_scale)
     c.cd(2)
-    ele_current.Draw("HIST")
+    c.GetPad(2).SetLeftMargin(0.12)
+    c.GetPad(2).SetRightMargin(0.12)
+    # c.GetPad(2).SetTopMargin(0.12)
+    c.GetPad(2).SetBottomMargin(0.14)
+    # det.sum_cu.GetXaxis().SetTitleOffset(1.2)
+    det.sum_cu.Draw("HIST")
+    #c.Update()
+    
+    #ele_current.Draw("HIST")
 
 
     ele_current.SetLineColor(6)
@@ -1013,7 +1223,29 @@ def draw_current(det,ele_current,qtot,drift):
     det.positive_cu.SetLineWidth(2)
     det.negtive_cu.SetLineWidth(2)
     ele_current.SetLineWidth(2)
+
+    ele_current.GetXaxis().SetTitleSize(0.05)
+    ele_current.GetXaxis().SetLabelSize(0.04)
+    ele_current.GetXaxis().SetNdivisions(510)
+    # ele_current.GetYaxis().SetTitleOffset(1.1)
+    ele_current.GetYaxis().SetTitleSize(0.05)
+    ele_current.GetYaxis().SetLabelSize(0.04)
+    ele_current.GetYaxis().SetNdivisions(505)
+    ele_current.GetXaxis().CenterTitle()
+    ele_current.GetYaxis().CenterTitle()
+    ele_current.GetXaxis().SetTitle("Time [s]")
+    ele_current.GetYaxis().SetTitle("Current [A]")
+    ele_current.GetYaxis().SetRangeUser(0,120)
  
+    c.cd(3)
+    c.GetPad(3).SetLeftMargin(0.12)
+    c.GetPad(3).SetRightMargin(0.12)
+    # c.GetPad(4).SetTopMargin(0.12)
+    c.GetPad(3).SetBottomMargin(0.14)
+    ele_current.Draw("HIST")
+    #c.Update()
+
+
     # axis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(),# rightmax, 0, 510, "+L")
     # axis.SetLineColor(6)
     # axis.SetTextColor(6)
@@ -1027,17 +1259,20 @@ def draw_current(det,ele_current,qtot,drift):
     legend = ROOT.TLegend(0.5, 0.3, 0.8, 0.6)
     legend.AddEntry(det.negtive_cu, "electron", "l")
     legend.AddEntry(det.positive_cu, "hole", "l")
-    legend.AddEntry(det.sum_cu, "e+h", "l")
+    legend.AddEntry(det.gain_negtive_cu, "gain electron", "l")
+    legend.AddEntry(det.gain_positive_cu, "gain hole", "l")
+    # legend.AddEntry(det.sum_cu, "e+h", "l")
     # legend.AddEntry(ele_current, "electronics", "l")
     legend.SetBorderSize(0)
     legend.SetTextFont(43)
-    legend.SetTextSize(40)
+    legend.SetTextSize(20)
 
     c.cd(1)
     legend.Draw("same")
 
-    c.Update()
-    c.SaveAs("drift_current.pdf")
+    #c.Update()
+    #c.SaveAs("drift_current.pdf")
+    c.SaveAs("drift_current_lgad_150V.png")
     
     charge_t=det.sum_cu.Integral() \
         * ((det.sum_cu.GetXaxis().GetXmax() \
@@ -1057,18 +1292,19 @@ def main():
     my_det = R2dDetector(50,50) # [um]
 
     # set material
-    my_sic_mat = Material('SiC')
+    my_sic_mat = Material('Si')
     my_det.set_mat(my_sic_mat)
 
     # set doping
     if model == "LGAD":
-        my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        # my_det.set_doping("(6.1942*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
+        my_det.set_doping("(2.2*(1e14)/sqrt(2*3.1415926)/0.13821*exp(-pow(x[1]-0.67,2))/2/0.13821/0.13821 + (1e13))*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12") # [cm-3]
     if model == "PIN":
         my_det.set_doping("1e13*(-(1.60217733e-19)*(1e6)/(8.854187817e-12)/(9.76))*1e-12")
 
     # set operating condition
     my_det.set_temperature(300) # [K]
-    my_det.set_bias_voltage(200) # [V]
+    my_det.set_bias_voltage(150) # [V]
 
     # mesh
     my_det.mesh(0.1, 0.1) # [um]
@@ -1076,7 +1312,7 @@ def main():
     # calculate electric field
     my_possion_solver = FenicsPossion(my_det)
     my_possion_solver.solve()
-    # my_possion_solver.draw()
+    my_possion_solver.draw()
 
     my_track = Tracks()
     
@@ -1086,8 +1322,9 @@ def main():
     my_drift = Drifts(my_track)
     my_drift.cal_current(my_track,my_possion_solver,my_det)
 
-    #print(my_drift.delta_track_info_dic_n)
-    #print(my_drift.delta_track_info_dic_p)
+    # print(my_drift.delta_track_info_dic_n['tk_80'][5])
+    # print(my_drift.delta_track_info_dic_p)
+    print(my_drift.gain_track_info_list)
 
     # after the electronics
     my_electronics = Amplifier()
