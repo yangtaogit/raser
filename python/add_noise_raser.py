@@ -114,7 +114,9 @@ class AddNoise:
             self.ampl_BB_nps_list.append(ampl_BB_nps)
             self.ampl_CSA_s_list.append(ampl_CSA_s)
             self.ampl_BB_s_list.append(ampl_BB_s)
-        self.noise_height_RMS= math.sqrt(sum([x**2 for x in self.noise_height_list])/len(self.noise_height_list))
+        self.noise_height_RMS= math.sqrt(sum([x**2 
+											  for x in self.noise_height_list])
+											  /len(self.noise_height_list))
         h_noise_height_RMS[0]=self.noise_height_RMS
         self.get_max()
         self.fill_dic()
@@ -180,19 +182,32 @@ class RootFile:
         self.tree_out.Branch('h_BB_pulse_height',h_BB_pulse_height) #BB
         self.tree_out.Branch('h_BB_nps_height',h_BB_nps_height)  
         self.tree_out.Branch('h_BB_dVdt',h_BB_dVdt,'h_BB_dVdt/F')
-        self.tree_out.Branch('h_BB_max_nps_height',h_BB_max_nps_height,'h_BB_max_nps_height/F')    
-        self.tree_out.Branch('h_BB_max_pulse_time',h_BB_max_pulse_time,'h_BB_max_pulse_time/F')
-        self.tree_out.Branch('h_BB_time_resolution',h_BB_time_resolution,'h_BB_time_resolution/F')
         self.tree_out.Branch('h_CSA_pulse_height',h_CSA_pulse_height) #CSA
         self.tree_out.Branch('h_CSA_nps_height',h_CSA_nps_height) 
         self.tree_out.Branch('h_CSA_dVdt',h_CSA_dVdt,'h_CSA_dVdt/F')
-        self.tree_out.Branch('h_CSA_max_nps_height',h_CSA_max_nps_height,'h_CSA_max_nps_height/F')    
-        self.tree_out.Branch('h_CSA_max_pulse_time',h_CSA_max_pulse_time,'h_CSA_max_pulse_time/F')
-        self.tree_out.Branch('h_CSA_time_resolution',h_CSA_time_resolution,'h_CSA_time_resolution/F')
         self.tree_out.Branch('h_noise_height',h_noise_height) #noise
-        self.tree_out.Branch('h_noise_CSA_height_jitter',h_noise_CSA_height_jitter,'h_noise_CSA_height_jitter/F')
-        self.tree_out.Branch('h_noise_BB_height_jitter',h_noise_BB_height_jitter,'h_noise_BB_height_jitter/F')
-        self.tree_out.Branch('h_noise_height_RMS',h_noise_height_RMS,'h_noise_height_RMS/F')
+        self.tree_out.Branch('h_BB_max_nps_height',
+							  h_BB_max_nps_height,'h_BB_max_nps_height/F')    
+        self.tree_out.Branch('h_BB_max_pulse_time',
+							  h_BB_max_pulse_time,'h_BB_max_pulse_time/F')
+        self.tree_out.Branch('h_BB_time_resolution',
+							  h_BB_time_resolution,'h_BB_time_resolution/F')
+        self.tree_out.Branch('h_CSA_max_nps_height',
+						      h_CSA_max_nps_height,'h_CSA_max_nps_height/F')    
+        self.tree_out.Branch('h_CSA_max_pulse_time',
+						      h_CSA_max_pulse_time,'h_CSA_max_pulse_time/F')
+        self.tree_out.Branch('h_CSA_time_resolution',
+							  h_CSA_time_resolution,'h_CSA_time_resolution/F')
+
+        self.tree_out.Branch('h_noise_CSA_height_jitter',
+							  h_noise_CSA_height_jitter,
+							'h_noise_CSA_height_jitter/F')
+        self.tree_out.Branch('h_noise_BB_height_jitter',
+							  h_noise_BB_height_jitter,
+							 'h_noise_BB_height_jitter/F')
+        self.tree_out.Branch('h_noise_height_RMS',
+							  h_noise_height_RMS,
+							  'h_noise_height_RMS/F')
     
     def fill_ampl_BB(self,addNoise,rset,max_height,max_time):
         h_BB_max_nps_height[0]=addNoise.ampl_paras[max_height]
@@ -246,9 +261,12 @@ def get_CFD_time(addNoise,Ampl_paras,rset,model):
     model_height="max_repampl_nps_height".replace("repampl",model)
    
     for i in range (0,len(time_list)):
-        if Ampl_paras[model_list][i]>=Ampl_paras[model_height]*rset.CFD and time_list[i]<Ampl_paras[max_time] and time_list[i+2]<Ampl_paras[max_time] and time_list[i-2]>1.0e-9:
+        if Ampl_paras[model_list][i]>=Ampl_paras[model_height]*rset.CFD \
+		   and time_list[i]<Ampl_paras[max_time] \
+		   and time_list[i+2]<Ampl_paras[max_time] and time_list[i-2]>1.0e-9:
             
-            dVdt=(Ampl_paras[model_list][i+2]-Ampl_paras[model_list][i-2])/(time_list[i+2]-time_list[i-2])/1e9/1.38       
+            dVdt=(Ampl_paras[model_list][i+2]-Ampl_paras[model_list][i-2])\
+				 /(time_list[i+2]-time_list[i-2])/1e9/1.38       
             if (dVdt!=0):
                 jitter=addNoise.noise_height_RMS/dVdt 
                 CFD_time = 3.85+time_list[i]*1e9+random_gauss(0,jitter) #3.85 is the initial time by personal customization
@@ -329,8 +347,11 @@ def draw_2D_CFD_time(CFD_time,out_put,model):
     c1.SetBottomMargin(0.2)
     #define lengend th1f and root gstyle
     leg = ROOT.TLegend(0.25, 0.6, 0.40, 0.8)
-    histo=ROOT.TH1F("","",20,4.6,5.6)
+    histo=ROOT.TH1F("","",20,4.6,7.0)
     root_set()
+    ROOT.gStyle.SetOptFit()
+    ROOT.gStyle.SetOptStat(0)
+    ROOT.gROOT.SetBatch(1)
     #get the data
     for i in range(0,len(CFD_time)):
         if CFD_time[i]>0:
@@ -352,8 +373,8 @@ def draw_2D_CFD_time(CFD_time,out_put,model):
     del c1
 
 def fit_data(histo):
-    fit_func_1 = ROOT.TF1('fit_func_1','gaus',4.6,5.6)
-    histo.Fit("fit_func_1","ROQ+","",4.6,5.6)
+    fit_func_1 = ROOT.TF1('fit_func_1','gaus',4.6,7.0)
+    histo.Fit("fit_func_1","ROQ+","",4.6,7.0)
     print("constant:%s"%fit_func_1.GetParameter(0))
     print("constant_error:%s"%fit_func_1.GetParError(0))
     print("mean:%s"%fit_func_1.GetParameter(1))

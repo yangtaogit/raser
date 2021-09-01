@@ -49,31 +49,33 @@ case $option in
         ./python/raser.py 3D 2D 0    
         ;;
     0.1.2) echo "2D batch model"
-        ./python/run_job.py 2D sub_10 total_10  instance_0 voltage_-500 output=out/2021815_2DPIN
+        ./python/run_job.py 2D sub_10 total_10  instance_0 voltage_-500 output=out/2Dscan/2021815_2DPIN
         ;;
     0.1.3) echo "raser 2D scan for time resolution... used by 0.1.2"
         ./python/raser.py  ${input_para:5:100}
         ;;
-
     0.1.4) echo "get time resolution 2D"
-        singularity exec raser.simg ./python/add_noise_raser.py out/2021815_2DPIN/voltage_500.0 out/2021815_2DPIN/sic_timing_result.root
+        singularity exec raser.simg ./python/add_noise_raser.py out/2Dscan/2021826_3D_doping:10_voltage:-500.0_egap:150.0
         esac
 }
  
 sub_0_2(){
-time_3D=2021_8_25_3D
 case $option in 
     0.2.1) echo "raser 3D SiC basic information..."
         ./python/raser.py 3D 3D  0 		#0 is geant4 visualization useless, 1 is useful
         ;;
 	0.2.2) echo "3D batch model"
-        ./python/run_job.py 3D sub_10 total_10  instance_0 voltage_-500 output=out/2021826_3D
+        ./python/run_job.py 3D sub_1000 total_10000  instance_0 voltage_-500 output=out/3Dscan/2021831_3D
         ;;
     0.2.3) echo "raser 3D scan for time resolution... used by 0.2.2"
 		./python/raser.py  ${input_para:5:100}
 		;;
-    0.2.4) echo "Stop Batch background operation"
+    0.2.4) echo "get time resolution 3D"
+        singularity exec raser.simg ./python/add_noise_raser.py out/3Dscan/2021831_3D_d:10_v:-500.0_g:150.0
+        ;;
+    0.2.5) echo "Stop Batch background operation"
         singularity instance stop --all
+		;;
         esac
 }
  
