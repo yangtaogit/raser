@@ -32,8 +32,8 @@ def sub_job(input,model,run_code):
 
     for i in range(input.instance_number):
         e_number=input.events_each_run*(i+1)
-        runcmd('nohup singularity exec instance://instance%s %s %s %s %s %s %s &' 
-        %(input.instance_in+i,run_code,e_number,input.events_each_run,input.change_p,input.output_path,input.instance_in+i))
+        runcmd('singularity exec instance://instance%s %s %s %s %s %s &' 
+        %(input.instance_in+i,run_code,e_number,input.events_each_run,input.change_p,input.output_path))
         time.sleep(1)
 
 def runcmd(command):
