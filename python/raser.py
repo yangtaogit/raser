@@ -943,8 +943,7 @@ class SPAGeneration():
         self.alfa = 987      #SI
         self.power = 1e-11   #J/s
         self.wavelength = 1.064e-6  #m
-        self.widthBeamWaist = 10e-6  #m
-        # self.widthBeamWaist = 3.6e-6  #m
+        self.widthBeamWaist = 5e-6  #m
         self.refractionIndex = 3.51
 
     def getWidthSquared(self,z):
@@ -1009,7 +1008,7 @@ class Matplt:
 
 class NNocarrier():
     def __init__(self, r, rlen, zlen, rbin, zbin):
-        self.z_o = 100   # z focus position in um
+        self.z_o = 0   # z focus position in um
         self.rlen = rlen
         self.zlen = zlen
         self.r_min = -r # um
