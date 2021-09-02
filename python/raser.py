@@ -641,6 +641,7 @@ class TCTDrifts:
                 test_n.Reset()
         my_d.sum_cu.Add(my_d.positive_cu)
         my_d.sum_cu.Add(my_d.negtive_cu)
+
     def get_current_his(self,histo):
         e0 = 1.60217733e-19
         hist = ROOT.TH1F()
@@ -919,7 +920,11 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
     for i in range(ele_current.GetNbinsX()):
         elecu[i].append(ele_current.GetBinContent(i))
     mincu = min(elecu)
-    return(mincu)
+    velocity = 0
+    for i in range(8):
+        vel_small = elecu[i][0]*0.05
+        velocity = velocity + vel_small
+    return(mincu, velocity)
 
 def draw_nocarrier(my_t, my_d, nocarrier):
     c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
@@ -938,7 +943,8 @@ class SPAGeneration():
         self.alfa = 987      #SI
         self.power = 1e-11   #J/s
         self.wavelength = 1.064e-6  #m
-        self.widthBeamWaist = 5e-6  #m
+        self.widthBeamWaist = 10e-6  #m
+        # self.widthBeamWaist = 3.6e-6  #m
         self.refractionIndex = 3.51
 
     def getWidthSquared(self,z):
@@ -1003,7 +1009,7 @@ class Matplt:
 
 class NNocarrier():
     def __init__(self, r, rlen, zlen, rbin, zbin):
-        self.z_o = 0   # z focus position in um
+        self.z_o = 100   # z focus position in um
         self.rlen = rlen
         self.zlen = zlen
         self.r_min = -r # um
@@ -1032,7 +1038,8 @@ class NNocarrier():
                 # Project sum and take into account integral step
                 projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
         projGrid = projGrid*my_pro.x_step*my_pro.z_step
-        return(projGrid)
+        sumprojGrid = np.sum(projGrid)
+        return(projGrid, sumprojGrid)
 
 
 ### get the 2D TCT simulation basics information
@@ -1042,10 +1049,11 @@ def twoD_TCT(model="PIN"):
     zlen = 1300
     rbin = 50
     zbin = 130
+    temperature = 300
     my_detector = R2dDetector(zlen, rlen)
     my_detector.mesh_step(1,1)
     # my_detector.mesh_step(10,1)
-    my_detector.set_para(doping=1.79, voltage=-200, temperature=300)      #doping:e12
+    my_detector.set_para(doping=9.8, voltage=-200, temperature=300)      #doping:e12
     ### get the electric field and weighting potential
     if model == "PIN":
         my_field = Fenics_cal(my_detector)
@@ -1068,10 +1076,11 @@ def twoD_TCT(model="PIN"):
     y_array=array('f')
     x = [[]for n in range(num+1)]
     y = [ ]
+    velo = [[]for n in range(num+1)]
     for i in range(num+1):
         r = -10+ i*(70/num)
         carriergen = NNocarrier(r, rlen, zlen, rbin, zbin)    #Input the position of the laser
-        nocarrier = carriergen.Nocarrier()
+        nocarrier, sumprojGrid = carriergen.Nocarrier()
         ### define the tracks and type of incident particles
         my_track = TCTTracks()
         my_track.t_mip(zbin, rbin, zlen, rlen, nocarrier)
@@ -1086,10 +1095,11 @@ def twoD_TCT(model="PIN"):
         my_plot.plot_basic_info(my_field,my_drift)
         ### root plot
         draw_nocarrier(my_track, my_detector, nocarrier)
-        cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
+        cumin, velocity= TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
         vmin = [i * 50 for i in cumin]
         y.append(vmin)
         x[i].append(r)
+        velo[i].append(velocity)
         x_array.extend(x[i])
         y_array.extend(vmin)
         n = 1
@@ -1101,25 +1111,28 @@ def twoD_TCT(model="PIN"):
         del x_array[:]
         del y_array[:]
     mg.Draw("APL")
-    cvmin.SaveAs("vmin200V.pdf")
+    cvmin.SaveAs("test200V.pdf")
 
     outputfile = ROOT.TFile("dataout200V.root","RECREATE")
     tree = ROOT.TTree("tree","tree")
     v = array('f', [0.])
     z = array('f', [0.])
+    vel = array('f', [0.])
     tree.Branch("v", v, "v/F")
     tree.Branch("z", z, "z/F")
+    tree.Branch("vel", vel, "vel/F")
     for i in range(num+1):
         v[0] = y[i][0]
         z[0] = x[i][0]
+        vel[0] = velo[i][0]
         tree.Fill()
     tree.Write()
     outputfile.Close()
 
     # #Input the position of the laser
     # # define the tracks and type of incident particles
-    # carriergen = NNocarrier(25, rlen, zlen, rbin, zbin)    #Input the position of the laser
-    # nocarrier = carriergen.Nocarrier() 
+    # carriergen = NNocarrier(41, rlen, zlen, rbin, zbin)    #Input the position of the laser
+    # nocarrier, sumprojGrid = carriergen.Nocarrier() 
     # my_track = TCTTracks()
     # my_track.t_mip(zbin, rbin, zlen, rlen, nocarrier)
     # ## drift of ionized particles
@@ -1133,7 +1146,7 @@ def twoD_TCT(model="PIN"):
     # my_plot.plot_basic_info(my_field,my_drift)
     # ## root plot
     # draw_nocarrier(my_track, my_detector, nocarrier)
-    # cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier) 
+    # cumin, velocity= TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier) 
     # print(cumin)
 
 ### get the 2D simulation basics information
