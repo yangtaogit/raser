@@ -17,16 +17,19 @@ usage() {
 }
 
 usage_0_1() { 
-    printf "\n\t%-5s  %-40s\n"  "0.1.1"    "RASER 2D SiC basic information" 
-    printf "\n\t%-5s  %-40s\n"  "0.1.2"    "2D batch model" 
-    printf "\n\t%-5s  %-40s\n"  "0.1.3"    "raser 2D scan for time resolution... used by 0.1.2" 
-    printf "\n\t%-5s  %-40s\n"  "0.1.4"    "get time resolution 2D" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.1"    "raser planar3D SiC basic information..." 
+    printf "\n\t%-5s  %-40s\n"  "0.1.2"    "planar3D batch model" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.3"    "raser planar3D scan for time resolution... used by 0.1.2" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.4"    "get time resolution planar3D" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.5"    "planar3D unit test" 
 }
 usage_0_2() { 
-    printf "\n\t%-5s  %-40s\n"  "0.2.1"    "RASER 3D SiC basic information" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.2"    "3D batch model" 
-    printf "\n\t%-5s  %-40s\n"  "0.2.3"    "raser 2D scan for time resolution... used by 0.2.2" 
-	printf "\n\t%-5s  %-40s\n"  "0.2.4"    "Stop Batch background operation" 
+    printf "\n\t%-5s  %-40s\n"  "0.2.1"    "raser plugin3D SiC basic information..." 
+    printf "\n\t%-5s  %-40s\n"  "0.2.2"    "plugin3D batch model" 
+    printf "\n\t%-5s  %-40s\n"  "0.2.3"    "raser plugin3D scan for time resolution... used by 0.2.2" 
+	printf "\n\t%-5s  %-40s\n"  "0.2.4"    "get time resolution plugin3D"
+	printf "\n\t%-5s  %-40s\n"  "0.2.5"    "plugin3D unit test"  
+	printf "\n\t%-5s  %-40s\n"  "0.2.6"    "singularity instance stop --all" 
 }
 usage_0_3() { 
     printf "\n\t%-5s  %-40s\n"  "0.3.1"    "RASER 2D LGAD" 
@@ -45,35 +48,43 @@ fi
 sub_0_1(){
 case $option in 
 	
-    0.1.1) echo "raser 2D SiC basic information..."
-        ./python/raser.py 3D 2D 0    
+    0.1.1) echo "raser planar3 SiC basic information..."
+        ./pyraser/raser.py det_model=planar3D 
         ;;
-    0.1.2) echo "2D batch model"
-        ./python/run_job.py 2D sub_10 total_10  instance_0 voltage_-500 output=out/2Dscan/2021815_2DPIN
+    0.1.2) echo "planar3 batch model"
+        ./pyraser/run_job.py det_model=planar3D step=10 total=10  \
+							 instance=0 output=out/planar3Dscan/2021831_3D
         ;;
-    0.1.3) echo "raser 2D scan for time resolution... used by 0.1.2"
-        ./python/raser.py  ${input_para:5:100}
+    0.1.3) echo "raser planar3 scan for time resolution... used by 0.1.2"
+        ./pyraser/raser.py  ${input_para:5:100}
         ;;
-    0.1.4) echo "get time resolution 2D"
-        singularity exec raser.simg ./python/add_noise_raser.py out/2Dscan/2021826_3D_doping:10_voltage:-500.0_egap:150.0
+    0.1.4) echo "get time resolution planar3"
+        singularity exec raser.simg ./pyraser/add_noise_raser.py  out/planar3Dscan/2021815_planar3D_d:10_v:-500.0_g:150.0
+        ;;
+	0.1.5) echo "unit test"
+        ./pyraser/unittext/test.py det_model=planar3Dscan
         esac
 }
  
 sub_0_2(){
 case $option in 
-    0.2.1) echo "raser 3D SiC basic information..."
-        ./python/raser.py 3D 3D  0 		#0 is geant4 visualization useless, 1 is useful
+    0.2.1) echo "raser plugin3D SiC basic information..."
+        ./pyraser/raser.py det_model=plugin3D 		
         ;;
-	0.2.2) echo "3D batch model"
-        ./python/run_job.py 3D sub_1000 total_10000  instance_0 voltage_-500 output=out/3Dscan/2021831_3D
+	0.2.2) echo "plugin3D batch model"
+        ./pyraser/run_job.py det_model=plugin3D step=10 total=10  \
+							 instance=0 output=out/plugin3Dscan/2021831_3D
         ;;
-    0.2.3) echo "raser 3D scan for time resolution... used by 0.2.2"
-		./python/raser.py  ${input_para:5:100}
+    0.2.3) echo "raser plugin3D scan for time resolution... used by 0.2.2"
+		./pyraser/raser.py  ${input_para:5:100}
 		;;
-    0.2.4) echo "get time resolution 3D"
-        singularity exec raser.simg ./python/add_noise_raser.py out/3Dscan/2021831_3D_d:10_v:-500.0_g:150.0
+    0.2.4) echo "get time resolution plugin3D"
+        singularity exec raser.simg ./pyraser/add_noise_raser.py  out/plugin3Dscan/2021815_planar3D_d:10_v:-500.0_g:150.0
         ;;
-    0.2.5) echo "Stop Batch background operation"
+	0.2.5) echo "unit test"
+        ./pyraser/unittext/test.py det_model=plugin3Dscan
+		;;
+    0.2.6) echo "Stop Batch background operation"
         singularity instance stop --all
 		;;
         esac
