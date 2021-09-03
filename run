@@ -62,7 +62,7 @@ case $option in
         singularity exec raser.simg ./pyraser/add_noise_raser.py  out/planar3Dscan/2021815_planar3D_d:10_v:-500.0_g:150.0
         ;;
 	0.1.5) echo "unit test"
-        ./pyraser/unittext/test.py det_model=planar3Dscan
+        ./pyraser/unittest/test.py det_model=planar3Dscan
         esac
 }
  
@@ -82,7 +82,7 @@ case $option in
         singularity exec raser.simg ./pyraser/add_noise_raser.py  out/plugin3Dscan/2021815_planar3D_d:10_v:-500.0_g:150.0
         ;;
 	0.2.5) echo "unit test"
-        ./pyraser/unittext/test.py det_model=plugin3Dscan
+        ./pyraser/unittest/test.py det_model=plugin3Dscan
 		;;
     0.2.6) echo "Stop Batch background operation"
         singularity instance stop --all
