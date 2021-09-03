@@ -9,6 +9,7 @@
 
 from operator import mod
 import matplotlib.pyplot as plt
+import importlib
 from array import array
 import fenics
 import numpy as np
@@ -1202,6 +1203,17 @@ def twoD_time_scan(output,number):
 
 def main():
     args = sys.argv[1:]
+
+    if args[0] == '3D': 
+        module_name = 'd3d.raser'
+    else: 
+        raise NameError(args[0])
+    
+    module = importlib.import_module(module_name)
+    module.main(args[1:])
+
+    sys.exit() 
+
     model = args[0]
 
     if model in ["2D","2D_SiC_PIN"]:
