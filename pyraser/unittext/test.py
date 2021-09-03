@@ -44,7 +44,7 @@ def main():
     my_g4p = pyraser.Particles(my_d, my_f, dset)
     my_current = pyraser.CalCurrent(my_d, my_f, my_g4p, dset)
     ele_current = pyraser.Amplifier(my_d, dset.amplifer)
-    pyraser.drawsave.draw_unittest(my_d,ele_current,my_f,my_g4p,my_current)
+    # pyraser.drawsave.draw_unittest(my_d,ele_current,my_f,my_g4p,my_current)
     judge_test(my_current.laudau_t_pairs,dset.det_model)
     os._exit(0)
 
@@ -66,9 +66,9 @@ def judge_test(e_h_pair,det_model):
     if ( (int(e_h_pair) == 9754 and det_model == "planar3Dscan") 
         or  (int(e_h_pair) == 15954 and det_model == "plugin3Dscan")):
         print("The raser can work normal. Successful !!!")
-        print("Further compare the 'right_%s.pdf' and 'test.pdf' files "%(det_model),end="") 
-        print("in the 'pyraser/unittest/' path. When the two are roughly ",end="")
-        print("the same, unit test will be more reliable.") 
+        # print("Further compare the 'right_%s.pdf' and 'test.pdf' files "%(det_model),end="") 
+        # print("in the 'pyraser/unittest/' path. When the two are roughly ",end="")
+        # print("the same, unit test will be more reliable.") 
     else:
         print("The raser can't work. Failed !!!")
         print("Your code make the original version of the code unable to run!!!")
