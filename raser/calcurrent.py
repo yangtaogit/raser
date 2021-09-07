@@ -375,13 +375,6 @@ class CalCurrent2D:
             self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(6) ]   # track_time, track_x, track_y, track_charges, track_current, track_gain
             self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(6) ] 
 
-            # gain tracks
-            # self.delta_gain_track_info_dic_n_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
-            # self.delta_gain_track_info_dic_n_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
-            # self.delta_gain_track_info_dic_p_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
-            # self.delta_gain_track_info_dic_p_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
-
-        
         self.cal_current()
         # self.draw_drift_path(det)
 
@@ -568,9 +561,6 @@ class CalCurrent2D:
                 self.track_current = 0.
                 self.track_gain = 1.
 
-                #print("current position "+str(i)+" : "+str(self.track_x)+","+str(self.track_y))
-                                
-                # print(self.end_condition)
                 self.end_condition = 0
                 while(self.end_condition==0):
 
