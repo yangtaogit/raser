@@ -8,7 +8,7 @@ Description: Raser parameter settings
 @Author     : tanyuhang
 @version    : 1.0
 '''
-
+import json
 
 # Define all input parameters used in raser main process
 class Setting:
@@ -33,16 +33,30 @@ class Setting:
         self._pardic = {}
         self.input2dic(parameters)
         self.det_model = self._pardic['det_model']
-        self.steplength = 10 #um
+        self.read_par(self._pardic['parfile'])
         self.scan_variation()
-
 
     def input2dic(self,parameters):
         " Transfer input list to dictinary"
         for par in parameters:
             name,_,value=par.rpartition('=')
             self._pardic[name]=value
-            
+
+    def read_par(self,jsonfile):
+        "Read the setting.json file and save the input parametersin paras"
+        with open(jsonfile) as f:
+            dic_pars = json.load(f)
+        for dic_par in dic_pars:
+            if dic_par['name'] in self.det_model:
+                self.steplength = float(dic_par['steplength'])
+                paras =  dic_par
+        for x in paras: 
+            if self.is_number(paras[x]):          
+                paras[x] = float(paras[x])
+            else:
+                paras[x] = paras[x]
+        self.paras = paras
+
     @property
     def detector(self):
         """
@@ -70,17 +84,19 @@ class Setting:
         ---------
             2021/09/02
         """
-        self.detector_planar3D = {'name':'planar3D', 
-                             'lx':5000, 'ly':5000, 'lz':100,
-                             'doping':10, 'voltage':-500, 'temp':300.0}
-        self.detector_plugin3D = {'name':'plugin3D', 
-                             'lx':10000, 'ly':10000, 'lz':350,
-                             'doping':10,'voltage':-500,'temp':300.0,
-                             'e_ir':51.0, 'e_gap':150.0}
-        detector_list = []
-        detector_list=self.get_dics_list(self.detector_planar3D, 
-                                         self.detector_plugin3D)
-        detector=self.get_model_dic(detector_list)
+        p = self.paras
+        if "planar3D" in self.det_model:
+            detector = {'name':'planar3D', 'lx':p['lx'], 'ly':p['ly'], 
+                        'lz':p['lz'], 'doping':p['doping'], 
+                        'voltage':p['voltage'], 'temp':p['temp']
+                        }
+            
+        if "plugin3D" in self.det_model:
+            detector = {'name':'plugin3D', 'lx':p['lx'], 'ly':p['ly'], 
+                        'lz':p['lz'], 'doping':p['doping'], 
+                        'voltage':p['voltage'], 'temp':p['temp'], 
+                        'e_ir':p['e_ir'], 'e_gap':p['e_gap']
+                        }
         return detector
 
     @property
@@ -103,14 +119,13 @@ class Setting:
         ---------
             2021/09/02
         """
-
-        fenics_planar3D = {'name':'planar3D', 
-                            'mesh':32, "xyscale":50}
-        fenics_plugin3D = {'name':'plugin3D', 
-                           'mesh':32, "xyscale":1}
-        fenics_list = []
-        fenics_list = self.get_dics_list(fenics_planar3D, fenics_plugin3D)
-        fenics=self.get_model_dic(fenics_list)
+        p = self.paras
+        if "planar3D" in self.det_model:
+            fenics = {'name':'planar3D', 
+                      'mesh':p['mesh'], "xyscale":p['xyscale']}
+        if "plugin3D" in self.det_model:
+            fenics = {'name':'plugin3D', 
+                      'mesh':p['mesh'], "xyscale":p['xyscale']}
         return fenics
 
     @property
@@ -136,22 +151,19 @@ class Setting:
         ---------
             2021/09/02
         """
-        pla=self.detector_planar3D
-        plu=self.detector_plugin3D
-
-        pygeant4_planar3D = {'name':'planar3D',
-                            'maxstep':0.5, 'g4_vis':False,
-                            'par_in':[pla['lx']/2.0, pla['ly']/2.0, 17000.], 
-                            "par_out":[pla['lx']/2.0, pla['ly']/2.0, 0.0],
-                           }
-        pygeant4_plugin3D = {'name':'plugin3D', 
-                            'maxstep':0.5, 'g4_vis':False,
-                            'par_in':[plu['lx']/2.0, plu['ly']/2.0, 17000.], 
-                            "par_out":[plu['lx']/2.0, plu['ly']/2.0, 0.0],
-                           }
-        pygeant4_list = []
-        pygeant4_list = self.get_dics_list(pygeant4_planar3D, pygeant4_plugin3D)
-        pygeant4=self.get_model_dic(pygeant4_list)
+        p = self.paras
+        if "planar3D" in self.det_model:
+            pygeant4 = {'name':'planar3D',
+                        'maxstep':p['maxstep'], 'g4_vis':p['g4_vis'],
+                        'par_in':[p['par_inx'], p['par_iny'], p['par_inz']], 
+                        "par_out":[p['par_outx'], p['par_outy'], p['par_outz']],
+                        }
+        if "plugin3D" in self.det_model:
+            pygeant4 = {'name':'plugin3D', 
+                        'maxstep':p['maxstep'], 'g4_vis':p['g4_vis'],
+                        'par_in':[p['par_inx'], p['par_iny'], p['par_inz']], 
+                        "par_out":[p['par_outx'], p['par_outy'], p['par_outz']],
+                        }
         return pygeant4
 
     @property
@@ -177,43 +189,38 @@ class Setting:
         ---------
             2021/09/02
         """
-        CSA_par = {'name':'CSA_ampl', 't_rise':0.7, 
-                   't_fall':1.1, 'trans_imp':38, 'CDet':30
+        p = self.paras
+        CSA_par = {'name':'CSA_ampl', 't_rise':p['t_rise'], 
+                   't_fall':p['t_fall'], 'trans_imp':p['trans_imp'], 
+                   'CDet':p['CDet']
                   }
-        BB_par = {'name':'BB_ampl', 'BBW':0.66, 
-                  'BBGain':19500, 'BB_imp':10,'OscBW':2
+        BB_par = {'name':'BB_ampl', 'BBW':p['BBW'], 
+                  'BBGain':p['BBGain'], 'BB_imp':p['BB_imp'],'OscBW':p['OscBW']
                  }
-
         return [CSA_par,BB_par]
-
-    def get_model_dic(self,input_list):
-        """ 
-        Input dictionary list
-        Return a dictionary named by your detector model
-        """
-        for det in input_list:
-            if det['name'] in self.det_model:
-                out_dic = det
-        return out_dic
-       
-    def get_dics_list(self,*input_dics):
-        """ 
-        Input saome dictionaries 
-        Return a list contain all dictionaries
-        """ 
-        out_list = []
-        for input_dic in input_dics:
-            out_list.append(input_dic)
-        return out_list
 
     def scan_variation(self):
         " Define parameters of batch mode"
         if "3Dscan" in self.det_model:
-            self.total_events = 10
-            self.intance_number = 0
+            self.total_events = int(self._pardic['total_e'])
+            self.intance_number = int(self._pardic['instan'])
             self.g4seed = self.intance_number * self.total_events
-            self.output = "pyraser/unittest/"
+            self.output = self._pardic["output"]
         else:
             self.total_events = 30
             self.g4seed = 0 
 
+    def is_number(self,s):
+        "Define whethre the s is a number or not"
+        try:
+            float(s)
+            return True
+        except ValueError:
+            pass
+        try:
+            import unicodedata
+            unicodedata.numeric(s)
+            return True
+        except (TypeError, ValueError):
+            pass
+        return False 

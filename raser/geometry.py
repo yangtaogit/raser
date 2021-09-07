@@ -13,7 +13,7 @@ import sys
 
 #Detector structure
 class R3dDetector:
-    def __init__(self,det_dic):
+    def __init__(self,dset):
         """
         Description:
             Differnet types detectors parameters assignment.
@@ -28,16 +28,17 @@ class R3dDetector:
         ---------
             2021/09/02
         """ 
+        det_dic = dset.detector
         self.l_x = det_dic['lx'] 
         self.l_y = det_dic['ly']  
         self.l_z = det_dic['lz'] 
         self.d_neff = det_dic['doping'] 
         self.v_voltage = det_dic['voltage'] 
         self.temperature = det_dic['temp']
-        self.det_model = det_dic['name']
+        self.det_model = dset.det_model
         self.mater = 1    
         self.current_define()
-        if self.det_model == 'plugin3D':
+        if 'plugin3D' in self.det_model:
             self.set_3D_electrode(det_dic['e_ir'],det_dic['e_gap'])
 
     def current_define(self):
