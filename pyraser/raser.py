@@ -37,7 +37,7 @@ def main():
     """
     args = sys.argv[1:]
     dset = Setting(args)
-    my_d = R3dDetector(dset.detector) 
+    my_d = R3dDetector(dset) 
     my_f = FenicsCal(my_d, dset.fenics)
     my_g4p = Particles(my_d, my_f, dset)
     my_current = CalCurrent(my_d, my_f, my_g4p, dset)
