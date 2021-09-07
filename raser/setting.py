@@ -97,6 +97,16 @@ class Setting:
                         'voltage':p['voltage'], 'temp':p['temp'], 
                         'e_ir':p['e_ir'], 'e_gap':p['e_gap']
                         }
+        
+        if "silicon_lgad2D" in self.det_model:
+            detector = {'name':'silicon_lgad2D',
+                        'det_width':p['det_width'], 'det_thin':p['det_thin'],
+                        'x_step':p['x_step'], 'y_step':p['y_step'],
+                        'material':p['material'],
+                        'doping_epr':p['doping_epr'],
+                        'bias_voltage':p['bias_voltage'],
+                        'temperature':p['temperature']
+                        }
         return detector
 
     @property
@@ -165,6 +175,33 @@ class Setting:
                         "par_out":[p['par_outx'], p['par_outy'], p['par_outz']],
                         }
         return pygeant4
+
+    # @property
+    # def mips(self):
+    #     """
+    #     Description:
+    #         Define mips parameters
+    #     Parameters:
+    #     ---------
+    #     track_entry : list
+    #         Incident particle position
+    #     track_exit : list
+    #         Exit position
+    #     n_div: int
+    #         Divide the track line to n_div points
+    #     @Returns:
+    #     ---------
+    #         A dictionary containing all parameters
+    #     @Modify:
+    #     ---------
+    #         2021/09/07
+    #     """
+    #     p = self.paras
+    #     track_par = {'name':'mips',
+    #                  'track_entry':[25,0],
+    #                  'track_exit':[25,50],
+    #                  'n_div':100}      
+    #     return track_par
 
     @property
     def amplifer(self):

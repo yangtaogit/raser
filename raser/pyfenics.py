@@ -10,6 +10,9 @@
 import fenics
 import mshr
 import sys
+import numpy as np
+import ROOT
+from array import array
 
 
 #Calculate the weighting potential and electric field
@@ -331,3 +334,286 @@ class FenicsCal:
     
     def __del__(self):
         pass
+
+
+class FenicsCal2D:
+
+    def __init__(self,det):
+        
+        self.det = det
+
+        # poential & field
+        self.potential_value_2d = []
+    
+        self.electric_field_x_value = [ [] for n in range(self.det.ny+1) ]
+        self.electric_field_y_value = [ [] for n in range(self.det.ny) ]
+
+        self.electric_field_x_position = [ [] for n in range(self.det.ny+1) ]
+        self.electric_field_y_position = [ [] for n in range(self.det.ny) ]
+
+        # weighting poential & weighting field
+        self.weighting_potential_value_2d = []
+    
+        self.weighting_electric_field_x_value = [ [] for n in range(self.det.ny+1) ]
+        self.weighting_electric_field_y_value = [ [] for n in range(self.det.ny) ]
+
+        self.weighting_electric_field_x_position = [ [] for n in range(self.det.ny+1) ]
+        self.weighting_electric_field_y_position = [ [] for n in range(self.det.ny) ]
+
+        self.solve()
+        #self.draw()
+
+    def cal_possion(self):
+        
+        width = self.det.det_width
+        thin = self.det.det_thin
+        
+        nx = self.det.nx
+        ny = self.det.ny
+
+        # Create mesh and function space
+        mesh = fenics.RectangleMesh(fenics.Point(0, 0), fenics.Point(width, thin), nx, ny)
+        V = fenics.FunctionSpace(mesh, "P", 1)
+
+        # Define boundary condition
+        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage)
+
+        def boundary(x, on_boundary):
+            return abs(x[1])<1E-14 or abs(x[1]-thin)<1E-14
+
+        bc = fenics.DirichletBC(V, u_D, boundary)
+
+        # Define variational problem
+        u = fenics.TrialFunction(V)
+        v = fenics.TestFunction(V)
+
+        f = fenics.Expression(self.det.doping_epr,degree=2)
+        a = fenics.dot(fenics.grad(u), fenics.grad(v))*fenics.dx
+        L = f*v*fenics.dx #+ g*v*ds
+
+        # Compute solution
+        u = fenics.Function(V)
+        fenics.solve(a == L, u, bc)
+
+        potential_value_1d = u.compute_vertex_values()
+        potential_value_2d = np.array(potential_value_1d).reshape(ny+1,nx+1)
+
+        self.potential_value_2d = potential_value_2d
+
+        # print(self.potential_value_2d)
+
+
+    def cal_weighting_possion(self):
+
+        width = self.det.det_width
+        thin = self.det.det_thin
+        
+        nx = self.det.nx
+        ny = self.det.ny
+
+        # Create mesh and function space
+        mesh = fenics.RectangleMesh(fenics.Point(0, 0), fenics.Point(width, thin), nx, ny)
+        V = fenics.FunctionSpace(mesh, "P", 1)
+
+        # Define boundary condition
+        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
+
+        def boundary(x, on_boundary):
+            return abs(x[1])<1E-14 or abs(x[1]-thin)<1E-14
+
+        bc = fenics.DirichletBC(V, u_D, boundary)
+
+        # Define variational problem
+        u = fenics.TrialFunction(V)
+        v = fenics.TestFunction(V)
+
+        f = fenics.Constant(0)
+        a = fenics.dot(fenics.grad(u), fenics.grad(v))*fenics.dx
+        L = f*v*fenics.dx #+ g*v*ds
+
+        # Compute solution
+        u = fenics.Function(V)
+        fenics.solve(a == L, u, bc)
+
+        weighting_potential_value_1d = u.compute_vertex_values()
+        weighting_potential_value_2d = np.array(weighting_potential_value_1d).reshape(ny+1,nx+1)
+
+        self.weighting_potential_value_2d = weighting_potential_value_2d
+
+        return weighting_potential_value_2d
+
+    def cal_electric_field(self):
+
+        width = self.det.det_width
+        thin = self.det.det_thin
+        
+        nx = self.det.nx
+        ny = self.det.ny
+
+        x_step = width/nx
+        y_step = thin/ny
+
+        # x direction
+        for j in range(ny+1):
+            for i in range(nx):
+
+                # electric field
+                tmp_xpos = 0.5*x_step*(2*i+1)
+                tmp_xef = (self.potential_value_2d[j][i] - self.potential_value_2d[j][i+1])/x_step
+                self.electric_field_x_position[j].append(tmp_xpos)
+                self.electric_field_x_value[j].append(tmp_xef)
+
+                # weighting field
+                tmp_wxpos = 0.5*x_step*(2*i+1)
+                tmp_xwef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j][i+1])/x_step
+                self.weighting_electric_field_x_position[j].append(tmp_wxpos)
+                self.weighting_electric_field_x_value[j].append(tmp_xwef)
+
+
+        # y direction 
+        for j in range(ny):
+            for i in range(nx+1):
+
+                # electric field
+                tmp_ypos = 0.5*y_step*(2*j+1)
+                tmp_yef = (self.potential_value_2d[j][i]- self.potential_value_2d[j+1][i])/y_step
+                self.electric_field_y_position[j].append(tmp_ypos)
+                self.electric_field_y_value[j].append(tmp_yef)
+
+                # weighting field
+                tmp_wypos = 0.5*y_step*(2*j+1)
+                tmp_ywef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j+1][i])/y_step
+                self.weighting_electric_field_y_position[j].append(tmp_wypos)
+                self.weighting_electric_field_y_value[j].append(tmp_ywef)     
+
+
+
+    def cal_point_field(self,px_point,py_point,input_value):
+
+        width = self.det.det_width
+        thin = self.det.det_thin
+        
+        nx = self.det.nx
+        ny = self.det.ny
+
+        x_step = width/nx
+        y_step = thin/ny
+
+        #Interpolation method 
+        rex_value=px_point%x_step
+        nx_value=int(px_point/x_step)
+        rey_value=py_point%y_step
+        ny_value=int(py_point/y_step)
+
+        if(rex_value>x_step/2):
+            e_v_x1=rex_value-x_step/2
+            nx1_v=nx_value
+            nx2_v=nx_value+1
+        else:
+            e_v_x1=rex_value+x_step/2
+            e_v_x2=x_step-e_v_x1
+            nx1_v=nx_value-1
+            nx2_v=nx_value
+
+        if(rey_value>y_step/2):
+            e_v_y1=rey_value-y_step/2
+            ny1_v=ny_value
+            ny2_v=ny_value+1
+        else:
+            e_v_y1=rey_value+y_step/2
+            e_v_y2=y_step-e_v_y1
+            ny1_v=ny_value-1
+            ny2_v=ny_value
+
+        if (nx_value<=0):
+            r_u=0
+            nx1_v=nx2_v
+        elif (nx_value>=nx-1):
+            r_u=0
+            nx2_v=nx1_v
+        else:
+            r_u=e_v_x1/x_step
+
+        if (ny_value<=0):
+            r_t=0
+            ny1_v=ny2_v
+        elif (ny_value>=ny-1):
+            r_t=0
+            ny2_v=ny1_v
+        else:
+            r_t=e_v_y1/y_step
+
+        value_11=input_value[ny1_v][nx1_v]
+        value_21=input_value[ny1_v][nx2_v]
+        value_12=input_value[ny1_v][nx1_v]
+        value_22=input_value[ny1_v][nx2_v]
+        out_field=0.0
+        out_field=(1-r_u)*(1-r_t)*value_11
+        out_field+=r_u*(1-r_t)*value_21
+        out_field+=r_u*r_t*value_22
+        out_field+=(1-r_u)*r_t*value_12
+
+        return out_field        
+
+
+    def solve(self):
+
+        self.cal_possion()
+        self.cal_weighting_possion()
+        self.cal_electric_field()
+
+    def draw(self):
+
+        cutline = int(self.det.nx/2.0)
+
+        # plot electric field at x = middle
+        ep = array( 'd' )
+        ev = array( 'd' )
+
+        for i in range(self.det.ny):
+
+            ep.append(self.electric_field_y_position[i][cutline])
+
+            efx = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_x_value)
+            efy = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_y_value)
+            ef = np.array([efx,efy])
+
+            ef_value = np.linalg.norm(ef)#*1e4 #V/cm
+
+            ev.append(ef_value)
+
+        # print(ep)
+        # print(ev)
+
+        g_e = ROOT.TGraph(self.det.ny,ep,ev)
+
+        g_e.SetLineColor(600)
+        g_e.SetLineWidth(4)
+        g_e.SetTitle( 'Electric Field at Cut Line' )
+        g_e.GetXaxis().SetTitle( 'Dpeth [um]' )
+        g_e.GetXaxis().SetRangeUser(0,self.det.det_thin)
+        g_e.GetYaxis().SetTitle( 'E [V/um]' )
+
+        g_e.GetXaxis().CenterTitle()
+        g_e.GetXaxis().SetTitleOffset(1.8)
+        g_e.GetXaxis().SetTitleSize(0.05)
+        g_e.GetXaxis().SetLabelSize(0.05)
+        #g_e.GetXaxis().SetNdivisions(505)
+
+        g_e.GetYaxis().CenterTitle()
+        g_e.GetYaxis().SetTitleOffset(1.8)
+        g_e.GetYaxis().SetTitleSize(0.05)
+        g_e.GetYaxis().SetLabelSize(0.05)
+        #g_e.GetYaxis().SetNdivisions(505)
+       
+        c = ROOT.TCanvas( 'c', 'c',500, 500 )
+        c.SetGrid()
+        c.SetLeftMargin(0.18)
+        c.SetBottomMargin(0.18)
+        # c.Divide(1,2)
+
+        c.cd()
+        g_e.Draw()
+        c.Modified()
+        c.Update()
+        c.SaveAs("./fig/silicon_lgad_2D_electricfield_150V.pdf")
