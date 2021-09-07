@@ -605,12 +605,7 @@ class FenicsCal2D:
         g_e.GetYaxis().SetTitleSize(0.05)
         g_e.GetYaxis().SetLabelSize(0.05)
         #g_e.GetYaxis().SetNdivisions(505)
-
-        # plot weighting electric field at x = middle
-        # wep = [depth[250] for depth in self.weighting_electric_field_y_position]
-        # wev = [wef[250] for wef in self.weighting_electric_field_y_value]
-        # g_we = ROOT.TGraph(len(wep),wep,wev)
-        
+       
         c = ROOT.TCanvas( 'c', 'c',500, 500 )
         c.SetGrid()
         c.SetLeftMargin(0.18)
@@ -622,19 +617,3 @@ class FenicsCal2D:
         c.Modified()
         c.Update()
         c.SaveAs("./fig/silicon_lgad_2D_electricfield_150V.pdf")
-
-
-        # plt.figure(figsize=(8,4), dpi=80)
-        # plt.figure(1)
-# # 
-        # ax1 = plt.subplot(121)        
-        # plt.plot( [depth[250] for depth in self.electric_field_y_position], [ef[250] for ef in self.electric_field_y_value])
-        # plt.xlabel('depth [um]')
-        # plt.ylabel('electric field [V/um]')
-# # 
-        # ax2 = plt.subplot(122)
-        # plt.plot( [wdepth[250] for wdepth in self.weighting_electric_field_y_position], [wef[250] for wef in self.weighting_electric_field_y_value])
-        # plt.xlabel('depth [um]')
-        # plt.ylabel('weighting electric field [V/um]')
-        # plt.tight_layout()
-        # plt.show()
