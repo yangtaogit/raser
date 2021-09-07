@@ -3,6 +3,8 @@ RASER
 
 RAdiation SEmiconductoR
 
+https://pypi.org/project/raser
+
 Function
 ======
 
@@ -38,8 +40,3 @@ Reference run setting
     - my_f = FenicsCal(my_d, dset.fenics)
     - my_g4p = Particles(my_d, my_f, dset)
     - my_current = CalCurrent(my_d, my_f, my_g4p, dset)
-
-Version 
-======
-Raser-0.2
- - Add 3D simulation
