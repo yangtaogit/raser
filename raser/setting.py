@@ -9,7 +9,6 @@ Description: Raser parameter settings
 @version    : 1.0
 '''
 import json
-from os import pathsep
 
 # Define all input parameters used in raser main process
 class Setting:
@@ -37,7 +36,6 @@ class Setting:
         self.read_par(self._pardic['parfile'])
         self.scan_variation()
 
-
     def input2dic(self,parameters):
         " Transfer input list to dictinary"
         for par in parameters:
@@ -49,7 +47,7 @@ class Setting:
         with open(jsonfile) as f:
             dic_pars = json.load(f)
         for dic_par in dic_pars:
-            if dic_par['name'] == self.det_model:
+            if dic_par['name'] in self.det_model:
                 self.steplength = float(dic_par['steplength'])
                 paras =  dic_par
         for x in paras: 

@@ -7,17 +7,13 @@ Description:  Simulate the e-h pairs drift and calculate induced current
 @version    : 1.0
 '''
 
-from array import array
-import subprocess
-import pyraser
 import random
 import numpy as np
 import ROOT
 import math
 import sys
-import os
 
-  
+
 #The drift of generated particles
 class CalCurrent:
     def __init__(self, my_d, my_f, my_g4p, dset):
@@ -28,12 +24,9 @@ class CalCurrent:
         self.sstep=dset.steplength #drift step
         self.kboltz=8.617385e-5 #eV/K
         self.max_drift_len=1e9 #maximum diftlenght [um]
-        if "3Dscan" in dset.det_model:
-            self.scan_batch_drift(my_d, my_f, my_g4p, dset)
-        else:
-            self.drift(my_d, my_f, my_g4p)
+        self.drift(my_d, my_f, my_g4p)
             
-    def drift(self, my_d, my_f, my_g4p, batch=0):
+    def drift(self, my_d, my_f, my_g4p, batch=0):    
         self.d_dic_n = {}
         self.d_dic_p = {}
         if batch == 0:
@@ -55,46 +48,18 @@ class CalCurrent:
             self.tracks_t_edep = my_g4p.edep_devices[batch]
         for n in range(len(self.tracks_p)-1):
             self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
-            self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ]
+            self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ]    
         self.ionized_drift(my_g4p,my_f,my_d)
+        
+    def ionized_drift(self,my_g4p,my_f,my_d):
 
-    def scan_batch_drift(self, my_d, my_f, my_g4p, dset):
-        """
-        Description:
-            Batch run some events to get time resolution
-        Parameters:
-        ---------
-        start_n : int
-            Start number of the event
-        end_n : int
-            end number of the event            
-        @Returns:
-        ---------
-            None
-        @Modify:
-        ---------
-            2021/09/02
-        """      
-        # from elereadout import Amplifier
-        # from drawsave import savedata  
-
-        start_n = dset.intance_number * dset.total_events
-        end_n = (dset.intance_number + 1) * dset.total_events
-        for event in range(start_n,end_n):
-            print("run events number:%s"%event)
-            self.drift(my_d, my_f, my_g4p,event)
-            ele_current = pyraser.Amplifier(my_d, dset.amplifer)
-            pyraser.savedata(my_d,dset.output,event,ele_current)
-            del ele_current
-
-    def ionized_drift(self,my_g4p,my_f,my_d):       
         for i in range(len(self.tracks_p)-1):
             self.n_track=i+1
             for j in range(2):
                 if (j==0):
                     self.charg=1 #hole
                 if (j==1):
-                    self.charg=-1 #electron
+                    self.charg=-1 #electron                
                 self.initial_parameter()
                 #generated particles positions
                 self.d_x=self.tracks_p[i+1][0]#initial position
@@ -103,10 +68,9 @@ class CalCurrent:
                 self.d_z=self.tracks_p[i+1][2] - my_g4p.init_tz_device 
                 while (self.end_cond==0):
                     # electic field of the position
-                    self.e_field = np.array(my_f.get_e_field(
-                                                             self.d_x,
-                                                             self.d_y,
-                                                             self.d_z)) 
+                    self.e_field = my_f.get_e_field(self.d_x,
+                                                    self.d_y,
+                                                    self.d_z)
                     # modify this part										
                     if (self.d_y>=(my_d.l_y-1.0) or self.d_x>=(my_d.l_x-1.0) or self.d_z>=(my_d.l_z-1.0)):
                         self.end_cond=3  
@@ -114,13 +78,14 @@ class CalCurrent:
                         self.end_cond=8                    
                     elif (self.e_field[0]==0 and self.e_field[1]==0 and self.e_field[1]==0):
                         self.end_cond=9
-                    else:                                                    
-                        self.delta_p() #delta_poisiton                    
+                    else:                                                                      
+                        self.delta_p() #delta_poisiton                  
                         self.drift_v(my_d,my_f) #drift_position                    
                         self.drift_s_step(my_d) #drift_next_posiiton
                         #charge_collection
-                        delta_Uw=my_f.get_w_p(self.d_cx,self.d_cy,self.d_cz)\
-                                 - my_f.get_w_p(self.d_x,self.d_y,self.d_z)
+                        self.wpot = my_f.get_w_p(self.d_cx,self.d_cy,self.d_cz)
+                        delta_Uw = (self.wpot 
+                                   - my_f.get_w_p(self.d_x,self.d_y,self.d_z))
                         self.charge=self.charg*delta_Uw
                         if(self.v_drift!=0):
                             self.d_time=self.d_time+self.sstep*1e-4/self.v_drift
@@ -128,11 +93,12 @@ class CalCurrent:
                         self.d_x=self.d_cx
                         self.d_y=self.d_cy
                         self.d_z=self.d_cz
-                        self.wpot=my_f.get_w_p(self.d_x,self.d_y,self.d_z)
+                        
                         self.save_inf_track(my_d)  
-                        self.drift_end_condition()                                                                         
-                    self.n_step+=1
+                        self.drift_end_condition()
+                    self.n_step+=1 
         self.get_current(my_d,my_g4p)
+        
 
     def initial_parameter(self):
         self.end_cond=0
@@ -144,27 +110,51 @@ class CalCurrent:
     def delta_p(self):
         # magnetic field effect
         if(self.charg)>0:
-            FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
+            FF=self.list_add(self.e_field,
+                             self.cross(self.e_field,self.BB,self.muhh))
         else:
-            FF=self.e_field-self.muhe*np.cross(self.e_field,self.BB)
-        #the delta x with electric field
-        if(np.linalg.norm(FF)!=0):
-            self.delta_x=-self.sstep*self.charg*FF[0]/np.linalg.norm(FF)
-            self.delta_y=-self.sstep*self.charg*FF[1]/np.linalg.norm(FF)
-            self.delta_z=-self.sstep*self.charg*FF[2]/np.linalg.norm(FF)
+            FF=self.list_sub(self.e_field,
+                             self.cross(self.e_field,self.BB,self.muhe))
+        
+        total_ef = self.root_mean_square(FF)
+        if(total_ef!=0):
+            self.delta_x=-self.sstep*self.charg*FF[0]/total_ef
+            self.delta_y=-self.sstep*self.charg*FF[1]/total_ef
+            self.delta_z=-self.sstep*self.charg*FF[2]/total_ef
         else:
-            self.delta_x=0
-            self.delta_y=0
-            self.delta_z=0
+            self.delta_x=0.0
+            self.delta_y=0.0
+            self.delta_z=0.0
+
+    def cross(self,p1,p2,scale):
+        """ Get vector cross product of p1, p2 """
+        o1 = p1[1]*p2[2]-p1[2]*p2[1]
+        o2 = p1[2]*p2[0]-p1[0]*p2[2]
+        o3 = p1[0]*p2[1]-p1[1]*p2[0]
+        return [scale*o1,scale*o2,scale*o3]
+
+    def root_mean_square(self,p1):
+        " Return root_mean_square of p1"
+        return math.sqrt(p1[0]*p1[0]+p1[1]*p1[1]+p1[2]*p1[2])
+
+    def list_add(self,p1,p2):
+        " Return the added two lists. eg:[1,2,3]+[1,2,3] = [2,4,6]"
+        return [ a+b for a,b in zip(p1,p2) ]
+
+    def list_sub(self,p1,p2):
+        " Return the added two lists. eg:[1,2,3]-[1,2,3] = [0,0,0]"
+        return [ a-b for a,b in zip(p1,p2) ]
 
     def drift_v(self,my_d,my_f):
-        e_delta_f = np.array(my_f.get_e_field(self.d_x+self.delta_x,
-                                              self.d_y+self.delta_y,
-                                            self.d_z+self.delta_z))
-        aver_e=(np.linalg.norm(self.e_field)+np.linalg.norm(e_delta_f))/2.0*1e4
-                                                                        #V/cm 
-         # mobility cm2/(V s) v : cm/s
-        self.v_drift=sic_mobility(self.charg,aver_e,my_d)*aver_e 
+        """ The drift of e-h pairs at electric field """
+        e_delta_f = my_f.get_e_field(self.d_x+self.delta_x,
+                                     self.d_y+self.delta_y,
+                                     self.d_z+self.delta_z)
+        te_delta_f = self.root_mean_square(e_delta_f)
+        aver_e = (self.root_mean_square(self.e_field) 
+                  + te_delta_f)/2.0*1e4            # V/cm                                                        
+        mobility = sic_mobility(self.charg,aver_e,my_d)  # mobility cm2/(V s) v : cm/s
+        self.v_drift = mobility*aver_e 
         #drift part
         if(self.v_drift==0):
             self.delta_x=0.0
@@ -178,14 +168,14 @@ class CalCurrent:
             #off when the field gets large enough
             DiffOffField=100.0  # if the electric field  
                                 # > 100V/um, the holes will multiplicat             
-            if(np.linalg.norm(e_delta_f)<DiffOffField):
-                self.s_time=self.sstep*1e-4/self.v_drift
-                s_sigma=math.sqrt(2.0*self.kboltz*
-                                  sic_mobility(self.charg,aver_e,my_d)
-                                  *my_d.temperature*self.s_time)
+            if(te_delta_f < DiffOffField):
+                self.s_time = self.sstep*1e-4/self.v_drift
+                s_sigma = math.sqrt(2.0*self.kboltz*mobility
+                                    *my_d.temperature*self.s_time)
                 self.dif_x=random.gauss(0.0,s_sigma)*1e4
                 self.dif_y=random.gauss(0.0,s_sigma)*1e4
-                self.dif_z=random.gauss(0.0,s_sigma)*1e4       
+                self.dif_z=random.gauss(0.0,s_sigma)*1e4
+                       
             else:
                 print("the eletric field is too big, \
                        the multiplication appear. The system shold end. ")
@@ -294,93 +284,6 @@ class CalCurrent:
                 /((hist.GetXaxis().GetXmax() - hist.GetXaxis().GetXmin()) \
                 / hist.GetNbinsX())*e0)
         return histo
-
-    def draw_drift_path(self,my_d,my_f,sensor_model):
-        ROOT.gStyle.SetOptStat(0)
-        # # ROOT.gROOT.SetBatch(1)
-        c1 = ROOT.TCanvas("c", "canvas1", 200,10,1000, 1000)
-        c1.Divide(1,2)
-
-        if "plugin3D" in sensor_model:
-            n_bin=[int((my_f.sx_r-my_f.sx_l)/5),
-                   int((my_f.sy_r-my_f.sy_l)/5),int((my_d.l_z)/10)]
-            structrue = ROOT.TH3D("","",n_bin[0],my_f.sx_l,my_f.sx_r,
-                                        n_bin[1],my_f.sy_l,my_f.sy_r,
-                                        n_bin[2],0,my_d.l_z)
-        elif "planar3D" in sensor_model:
-            n_bin=[int(my_d.l_x/50),int(my_d.l_y/50),int(my_d.l_z)]
-            structrue = ROOT.TH3D("","",n_bin[0],0,my_d.l_x,
-                                        n_bin[1],0,my_d.l_y,
-                                        n_bin[2],0,my_d.l_z)
-        c1.cd(1)
-        for k in range(n_bin[2]):
-            for j in range (n_bin[1]):
-                for i in range(n_bin[0]):
-                    if "plugin3D" in sensor_model:
-                        x_v = (i+1)*((my_f.sx_r-my_f.sx_l)/n_bin[0])+my_f.sx_l
-                        y_v = (j+1)*((my_f.sx_r-my_f.sx_l)/n_bin[1])+my_f.sx_l
-                        z_v = (k+1)*(my_d.l_z/n_bin[2])
-                    elif "planar3D" in sensor_model:
-                        x_v = (i+1)*(my_d.l_x/n_bin[0])
-                        y_v = (j+1)*(my_d.l_y/n_bin[1])
-                        z_v = (k+1)*(my_d.l_z/n_bin[2])
-                    try:
-                        x_value,y_value,z_value = my_f.get_e_field(x_v,y_v,z_v)
-                        if x_value==0 and y_value==0 and z_value ==0:
-                            structrue.SetBinContent(i+1,j+1,k+1,1)
-                        else:                       
-                            structrue.SetBinContent(i+1,j+1,k+1,0)
-                    except RuntimeError:
-                        structrue.SetBinContent(i+1,j+1,k+1,1)
-        structrue.SetFillColor(1)
-        structrue.Draw("ISO")
-
-        mg = ROOT.TMultiGraph("mg","")
-        x_array=array('f')
-        y_array=array('f')
-        z_array=array('f')
-        for i in range(len(self.d_dic_p)):
-            n=len(self.d_dic_p["tk_"+str(i+1)][0])
-            if(n>0):
-                x_array.extend(self.d_dic_p["tk_"+str(i+1)][0])
-                y_array.extend(self.d_dic_p["tk_"+str(i+1)][1]) 
-                z_array.extend(self.d_dic_p["tk_"+str(i+1)][2])              
-                gr_p = ROOT.TPolyLine3D(n,x_array,y_array,z_array)
-                gr_p.SetLineColor(2)
-                gr_p.SetLineStyle(1)
-                gr_p.Draw("SAME")
-                gr_2D_p=ROOT.TGraph(n,x_array,z_array)
-                gr_2D_p.SetMarkerColor(2)
-                gr_2D_p.SetLineColor(2)
-                gr_2D_p.SetLineStyle(1)
-                mg.Add(gr_2D_p)
-                del x_array[:]
-                del y_array[:]
-                del z_array[:]
-        for j in range(len(self.d_dic_n)):
-            m=len(self.d_dic_n["tk_"+str(j+1)][0])
-            if(m>0):
-                x_array.extend(self.d_dic_n["tk_"+str(j+1)][0])
-                y_array.extend(self.d_dic_n["tk_"+str(j+1)][1])
-                z_array.extend(self.d_dic_n["tk_"+str(j+1)][2])                
-                gr_n = ROOT.TPolyLine3D(m,x_array,y_array,z_array)
-                gr_n.SetLineColor(4)
-                gr_n.SetLineStyle(1)
-                gr_n.Draw("SAME")
-                gr_2D_n=ROOT.TGraph(m,x_array,z_array)
-                gr_2D_n.SetMarkerColor(4)
-                gr_2D_n.SetLineColor(4)
-                gr_2D_n.SetLineStyle(1)
-                mg.Add(gr_2D_n)
-                del x_array[:]
-                del y_array[:]
-                del z_array[:]
-        c1.cd(2)
-        mg.Draw("APL")
-        mg.GetXaxis().SetTitle("x aixs")
-        mg.GetYaxis().SetTitle("z aixs")
-        c1.SaveAs("fig/drift_path.root")
-        del c1
         
 # # # mobility model
 def sic_mobility(charge,aver_e,my_d):
@@ -427,6 +330,4 @@ def sic_mobility(charge,aver_e,my_d):
             hfm = lfm / (math.pow(1.0 + math.pow(lfm * E / vsatp, betap), 1.0/betap))                      
     return hfm
 
-def runcmd(command):
-    """ subprocess run the shell command """
-    ret = subprocess.run([command],shell=True)
+

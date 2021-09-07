@@ -38,7 +38,7 @@ class R3dDetector:
         self.det_model = dset.det_model
         self.mater = 1    
         self.current_define()
-        if self.det_model == 'plugin3D':
+        if 'plugin3D' in self.det_model:
             self.set_3D_electrode(det_dic['e_ir'],det_dic['e_gap'])
 
     def current_define(self):
