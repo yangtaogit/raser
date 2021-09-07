@@ -16,10 +16,6 @@ from array import array
 from model import Mobility
 from model import Avalanche
 
-""" Global Constant """
-e0 = 1.60217733e-19 # C
-perm0 = 8.854187817e-12 # F/m
-
 #The drift of generated particles
 class CalCurrent:
     def __init__(self, my_d, my_f, my_g4p, dset):
@@ -544,6 +540,7 @@ class CalCurrent2D:
 
     def cal_current(self):
 
+        e0 = 1.60217733e-19
         track = self.track
         fen = self.fen
         det = self.det
