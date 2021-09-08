@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 '''
 @Description: Calculate the weighting potential and electric field wiht fenics      
