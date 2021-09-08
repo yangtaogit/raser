@@ -8,10 +8,6 @@ class MIPs:
     # MIPs particle
     def __init__(self):
 
-        # initial
-        # track_entry = par_dic['track_entry']
-        # track_exit = par_dic['track_exit']
-        # n_div = par_dic['n_div']
         track_entry = [25.0,0]
         track_exit = [25.0,50.0]
         n_div = 100
