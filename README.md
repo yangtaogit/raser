@@ -34,17 +34,14 @@ Example
  - example.py 
 
 ``` 
-from setting import Setting
-from geometry import R3dDetector
-from pyfenics import FenicsCal
-from g4particles import Particles
-from calcurrent import CalCurrent
+import raser
 
-dset = Setting(args)
-my_d = R3dDetector(dset)
-my_f = FenicsCal(my_d, dset.fenics)
-my_g4p = Particles(my_d, my_f, dset)
-my_current = CalCurrent(my_d, my_f, my_g4p, dset)
+dset = raser.Setting(args)
+my_d = raser.R3dDetector(dset)
+my_f = raser.FenicsCal(my_d, dset.fenics)
+my_g4p = raser.Particles(my_d, my_f, dset)
+my_current = raser.CalCurrent(my_d, my_f, my_g4p, dset)
+ele_current = raser.Amplifier(my_d, dset.amplifer)
 ```
  - setting.json 
   
