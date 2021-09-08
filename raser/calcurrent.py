@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 '''
 Description:  Simulate the e-h pairs drift and calculate induced current     
@@ -13,8 +12,8 @@ import ROOT
 import math
 import sys
 from array import array
-from model import Mobility
-from model import Avalanche
+from raser.model import Mobility
+from raser.model import Avalanche
 
 #The drift of generated particles
 class CalCurrent:
