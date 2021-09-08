@@ -3,7 +3,9 @@ RASER
 
 RAdiation SEmiconductoR
 
-https://pypi.org/project/raser
+
+[![Latest Version][pypi-image]][pypi-url] 
+  
 
 Function
 ======
@@ -98,3 +100,8 @@ Contribution
 * Jia Wang, Hunan Normal U, @wangjia0203 
 * Chenxi Fu, Jilin U, @heheda2001123
   
+
+
+[pypi-image]: https://img.shields.io/pypi/v/raser.svg
+[pypi-url]: https://pypi.org/project/raser
+
