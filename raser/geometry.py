@@ -10,7 +10,7 @@
 import ROOT
 import math
 import sys
-from model import Material
+from raser.model import Material
 
 #Detector structure
 class R3dDetector:
