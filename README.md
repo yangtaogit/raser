@@ -26,6 +26,11 @@ Example
 ======
 
 - An example python code to use raser:
+
+> $ python example.py det_model=planar3D parfile=setting.json
+ 
+ - example.py 
+
 ``` 
 from setting import Setting
 from geometry import R3dDetector
@@ -39,8 +44,45 @@ my_f = FenicsCal(my_d, dset.fenics)
 my_g4p = Particles(my_d, my_f, dset)
 my_current = CalCurrent(my_d, my_f, my_g4p, dset)
 ```
+ - setting.json 
+  
+```
+[
+{
+"steplength" : "1",
+"name" : "planar3D",
 
-> $ python example.py det_model=planar3D parfile=setting.json
+"lx" : "50",
+"ly" : "50",
+"lz" : "10",
+"doping" : "10", 
+"voltage" : "-100",
+"temp" : "300.0",
+
+"mesh" : "32",
+"xyscale" : "1",
+
+"maxstep" : "10",
+"g4_vis" : "0",
+"par_inx" : "25",
+"par_iny" : "25",
+"par_inz" : "17000",
+"par_outx" : "25",
+"par_outy" : "25",
+"par_outz" : "0",
+
+"t_rise" : "1",
+"t_fall" : "1",
+"trans_imp" : "1",
+"CDet" : "1",
+"BBW" : "1",
+"BBGain" : "10",
+"BB_imp" : "1",
+"OscBW" : "1"
+}
+]
+
+```
 
 
 Contribution 
