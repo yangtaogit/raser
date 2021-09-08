@@ -13,8 +13,8 @@ import ROOT
 import math
 import sys
 from array import array
-from model import Mobility
-from model import Avalanche
+from raser.model import Mobility
+from raser.model import Avalanche
 
 #The drift of generated particles
 class CalCurrent:
