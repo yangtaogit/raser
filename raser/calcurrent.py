@@ -361,8 +361,8 @@ class CalCurrent2D:
 
         self.delta_x=0.
         self.delta_y=0.
-        self.diff_x=0.
-        self.diff_y=0.
+        self.dif_x=0.
+        self.dif_y=0.
 
         self.s_time = 0.
 
@@ -443,18 +443,19 @@ class CalCurrent2D:
         if(self.drift_velocity == 0):
             self.delta_x=0
             self.delta_y=0
-            self.diff_x=0
-            self.diff_y=0
+            self.dif_x=0
+            self.dif_y=0
             self.end_condition = 9
         else:
+            
             DiffOffField=8*1e4 #V/cm
+            #print("ef_value = "+str(ef_value))
             if(ef_value<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.drift_velocity
                 s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
-                # self.dif_x=random.gauss(0,s_sigma)*1e4
-                # self.dif_y=random.gauss(0,s_sigma)*1e4
-                self.dif_x=0.
-                self.dif_y=0.
+                self.dif_x=random.gauss(0,s_sigma)*1e4
+                self.dif_y=random.gauss(0,s_sigma)*1e4
+
 
             else:
                 self.dif_x=0.0
@@ -496,8 +497,8 @@ class CalCurrent2D:
 
     def update_step(self,det):
         self.track_time = self.track_time + self.s_time
-        self.track_x = self.track_x + self.delta_x + self.diff_x
-        self.track_y = self.track_y + self.delta_y + self.diff_y
+        self.track_x = self.track_x + self.delta_x + self.dif_x
+        self.track_y = self.track_y + self.delta_y + self.dif_y
         self.track_charges = self.charges
         self.track_gain *= self.s_gain
 
@@ -746,11 +747,11 @@ class CalCurrent2D:
             if(tmp_track_name[-3:]=='n_p'):
                 det.gain_n_p_cu.Add(temp_gain_cu)
 
-            if(tmp_track_name[-3:]=='p_n'):
-                det.gain_p_n_cu.Add(temp_gain_cu)
-
-            if(tmp_track_name[-3:]=='p_p'):
-                det.gain_p_p_cu.Add(temp_gain_cu)
+            # if(tmp_track_name[-3:]=='p_n'):
+            #     det.gain_p_n_cu.Add(temp_gain_cu)
+# 
+            # if(tmp_track_name[-3:]=='p_p'):
+            #     det.gain_p_p_cu.Add(temp_gain_cu)
 
 
             temp_gain_cu.Reset()
@@ -779,8 +780,11 @@ class CalCurrent2D:
         
     def draw_drift_path(self,det):
         # ROOT.gStyle.SetOptStat(0)
-        c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 1000)
-        mg = ROOT.TMultiGraph("mg","")
+
+        c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 500)
+        c1.Divide(2,1)
+
+        mg1 = ROOT.TMultiGraph("mg1","initial current path")
         x_array=array('f')
         y_array=array('f')
         for i in range(len(self.delta_track_info_dic_p)):
@@ -792,7 +796,7 @@ class CalCurrent2D:
                 gr_p.SetMarkerColor(4)
                 gr_p.SetLineColor(4)
                 gr_p.SetLineStyle(1)
-                mg.Add(gr_p)
+                mg1.Add(gr_p)
                 del x_array[:]
                 del y_array[:]
         for j in range(len(self.delta_track_info_dic_n)):
@@ -804,10 +808,14 @@ class CalCurrent2D:
                 gr_n.SetMarkerColor(2)
                 gr_n.SetLineColor(2)
                 gr_n.SetLineStyle(1)
-                mg.Add(gr_n)
+                mg1.Add(gr_n)
                 del x_array[:]
                 del y_array[:]
-        mg.GetXaxis().SetRangeUser(0,det.det_width)
-        mg.GetYaxis().SetRangeUser(0,det.det_thin)
-        mg.Draw("APL")
+        mg1.GetXaxis().SetLimits(0,det.det_width)
+        mg1.GetYaxis().SetLimits(0,det.det_thin)
+        c1.cd(1)
+        mg1.Draw("APL")
+
+        mg2 = ROOT.TMultiGraph("mg2","gain current path")
+
         c1.SaveAs("./fig/silicon_lgad_2D_drift_path_150V.pdf")
