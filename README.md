@@ -18,9 +18,6 @@ Dependences
 - [ROOT](https://root.cern.ch/building-root) 
 - [Geant4](https://geant4.web.cern.ch)
 - [FEniCS](https://fenicsproject.org)
-- [Boost.Python](https://www.boost.org/doc/libs/1_75_0/libs/python/doc/html/index.html) 
-  
-
 
 
 Example 
