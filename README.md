@@ -86,8 +86,8 @@ ele_current = raser.Amplifier(my_d, dset.amplifer)
 
 Contribution 
 ====== 
-* Xin Shi, IHEP, @xshi
-* Yuhang Tan, IHEP, @tanyh2018
+* Xin Shi, IHEP, @ xshi
+* Yuhang Tan, IHEP, @ tanyh2018
 * Tao Yang, IHEP, @yangtaogit
 * Kai Liu, IHEP, @liukaihep
 * Ryuta Kiuchi, IHEP, @rkiuchi
