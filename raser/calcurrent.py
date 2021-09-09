@@ -784,9 +784,10 @@ class CalCurrent2D:
         c1 = ROOT.TCanvas("c1", "canvas1", 200,10,1000, 500)
         c1.Divide(2,1)
 
-        mg1 = ROOT.TMultiGraph("mg1","initial current path")
         x_array=array('f')
         y_array=array('f')
+
+        mg1 = ROOT.TMultiGraph("mg1","initial current path")
         for i in range(len(self.delta_track_info_dic_p)):
             n=len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])
             if(n>0):
@@ -817,5 +818,36 @@ class CalCurrent2D:
         mg1.Draw("APL")
 
         mg2 = ROOT.TMultiGraph("mg2","gain current path")
+
+        for j in range(len(self.delta_gain_track_info_dic)):
+
+            track_name = self.gain_track_info_list[j][0]
+            n = len(self.delta_gain_track_info_dic[track_name][0])
+            
+            if(n>0):
+                x_array.extend(self.delta_gain_track_info_dic[track_name][1])
+                y_array.extend(self.delta_gain_track_info_dic[track_name][2])
+
+                if(track_name[-1]=='p'):
+                    gr_gain_p = ROOT.TGraph(n,x_array,y_array)
+                    gr_gain_p.SetMarkerColor(4)
+                    gr_gain_p.SetLineColor(4)
+                    gr_gain_p.SetLineStyle(1)
+                    mg2.Add(gr_gain_p)
+                    del x_array[:]
+                    del y_array[:]
+                
+                if(track_name[-1]=='n'):
+                    gr_gain_n = ROOT.TGraph(n,x_array,y_array)
+                    gr_gain_n.SetMarkerColor(2)
+                    gr_gain_n.SetLineColor(2)
+                    gr_gain_n.SetLineStyle(1)
+                    mg2.Add(gr_gain_n)
+                    del x_array[:]
+                    del y_array[:]
+        mg2.GetXaxis().SetLimits(0,det.det_width)
+        mg2.GetYaxis().SetLimits(0,det.det_thin)
+        c1.cd(2)
+        mg2.Draw("APL")
 
         c1.SaveAs("./fig/silicon_lgad_2D_drift_path_150V.pdf")
