@@ -1,7 +1,7 @@
 RASER
 ======
 
-RAdiation SEmiconductoR
+**RA**diation **SE**miconducto**R** 
 
 
 [![Latest Version][pypi-image]][pypi-url] 
