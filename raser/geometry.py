@@ -139,7 +139,7 @@ class R2dDetector:
         self.ny = int(self.det_thin/self.y_step)
 
         self.t_bin = 50e-12
-        self.t_end = 6.0e-9
+        self.t_end = 3.0e-9
         self.t_start = 0
         self.n_bin = int((self.t_end-self.t_start)/self.t_bin)
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
