@@ -379,7 +379,7 @@ class CalCurrent2D:
             for n in range(len(track.track_position)*len(track.track_position[0])):
                 self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(6) ]   # track_time, track_x, track_y, track_charges, track_current, track_gain
                 self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(6) ] 
-        self.cal_current()
+        self.cal_current(model)
         # self.draw_drift_path(det)
 
     def drift_diffusion(self,det,fen):
