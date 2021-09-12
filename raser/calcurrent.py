@@ -893,7 +893,7 @@ class CalCurrent2D:
                     temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(i+1)][0][j], self.delta_track_info_dic_p["tk_"+str(i+1)][4][j])
 
                 for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
-                temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
+                    temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
 
                 det.positive_cu.Add(temp_positive_cu)
                 det.negtive_cu.Add(temp_negitive_cu)
