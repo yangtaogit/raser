@@ -444,7 +444,6 @@ class CalCurrent2D:
             self.landau_scale()
             self.draw_drift_path(det)
 
-    
     def drift_diffusion(self,det,fen):
 
         my_mobility = Mobility(det.mat_name)
@@ -610,20 +609,76 @@ class CalCurrent2D:
         # initial carrier track
         #
         
-        for i in range(len(track.track_position)):
+            for i in range(len(track.track_position)):
 
             if track.ionized_pairs[i]<=0:
                 continue
 
             self.track_number = i+1
 
-            for j in range(2):
+                for j in range(2):
 
-                if(j==0):
-                    self.charges=1*track.ionized_pairs[i] # hole
+                    if(j==0):
+                        self.charges=1*track.ionized_pairs[i] # hole
 
-                if(j==1):
-                    self.charges=-1*track.ionized_pairs[i] # electron
+                    if(j==1):
+                        self.charges=-1*track.ionized_pairs[i] # electron
+                
+                    self.track_time = 0.
+                    self.track_x = track.track_position[i][0]
+                    self.track_y = track.track_position[i][1]
+                    self.track_charges = 0.
+                    self.track_current = 0.
+                    self.track_gain = 1.
+
+                    self.end_condition = 0
+                    while(self.end_condition==0):
+
+                        if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                         
+                            self.end_condition=4
+
+                        else:
+                            efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
+                            efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
+
+                            ef = np.array([efx,efy])
+                            ef_value = np.linalg.norm(ef)*1e4
+
+                            self.e_field = np.array([efx,efy])
+
+                            wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
+                            wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
+
+                            wef = np.array([wefx,wefy])
+                            wef_value = np.linalg.norm(wef)*1e4
+
+                            self.we_field = np.array([wefx,wefy])                                
+
+                            self.drift_diffusion(det,fen)
+
+                            # SR current
+
+                            self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
+
+                            self.update_track_info()
+                            self.update_step(det)
+                            self.update_end_condition()
+
+        elif model == "TCT":
+
+            track.nocarrier(self.r)
+            self.track_number = 0
+
+            for i in range(len(track.track_position)):
+                for m in range(len(track.track_position[i])):
+                    self.track_number = self.track_number + 1
+                    for j in range(2):
+                        if(j==0):
+                            self.charges=1*track.ionized_pairs[m,i] # hole
+
+                        if(j==1):
+                            self.charges=-1*track.ionized_pairs[m,i] # electron
                 
                 self.track_time = 0.
                 self.track_x = track.track_position[i][0]
@@ -637,34 +692,34 @@ class CalCurrent2D:
 
                     if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
                          
-                        self.end_condition=4
+                                self.end_condition=4
 
-                    else:
-                        efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
-                        efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
+                            else:
+                                efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
+                                efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
 
-                        ef = np.array([efx,efy])
-                        ef_value = np.linalg.norm(ef)*1e4
+                                ef = np.array([efx,efy])
+                                ef_value = np.linalg.norm(ef)*1e4
 
-                        self.e_field = np.array([efx,efy])
+                                self.e_field = np.array([efx,efy])
 
-                        wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
-                        wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
+                                wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
+                                wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
 
-                        wef = np.array([wefx,wefy])
-                        wef_value = np.linalg.norm(wef)*1e4
+                                wef = np.array([wefx,wefy])
+                                wef_value = np.linalg.norm(wef)*1e4
 
-                        self.we_field = np.array([wefx,wefy])                                
+                                self.we_field = np.array([wefx,wefy])                                
 
-                        self.drift_diffusion(det,fen)
+                                self.drift_diffusion(det,fen)
 
-                        # SR current
+                                # SR current
 
-                        self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
+                                self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
 
-                        self.update_track_info()
-                        self.update_step(det)
-                        self.update_end_condition()
+                                self.update_track_info()
+                                self.update_step(det)
+                                self.update_end_condition()
 
         det.positive_cu.Reset()
         det.negative_cu.Reset()
