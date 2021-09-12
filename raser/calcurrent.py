@@ -886,8 +886,30 @@ class CalCurrent2D:
             for i in range(len(track.track_position)):
 
                 for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
-                    
-                    if(self.delta_track_info_dic_p["tk_"+str(i+1)][5][j]>1.0):
+                    temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(i+1)][0][j], self.delta_track_info_dic_p["tk_"+str(i+1)][4][j])
+
+                for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
+                    temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
+
+                det.positive_cu.Add(temp_positive_cu)
+                det.negtive_cu.Add(temp_negitive_cu)
+
+                temp_positive_cu.Reset()
+                temp_negitive_cu.Reset()
+
+            #
+            # gain current
+            #
+
+            temp_gain_cu = ROOT.TH1F("temp_gain","temp_gain",det.n_bin,0,det.t_end)
+
+            for i in range(len(self.gain_track_info_list)):
+
+                tmp_track_name = self.gain_track_info_list[i][0]
+
+                for j in range(len(self.delta_gain_track_info_dic[tmp_track_name][0])):
+                
+                    temp_gain_cu.Fill(self.delta_gain_track_info_dic[tmp_track_name][0][j],self.delta_gain_track_info_dic[tmp_track_name][4][j])
 
                 if(tmp_track_name[-1]=='p'):
                 det.gain_positive_cu.Add(temp_gain_cu)
