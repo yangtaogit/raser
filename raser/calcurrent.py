@@ -451,7 +451,7 @@ class CalCurrent2D:
         self.muhh=1650   # mobility related with the magnetic field (now silicon useless)
         self.muhe=310
         self.BB=np.array([0,0])
-        self.sstep=0.1 # drift step
+        self.sstep=1 # drift step
         self.kboltz=8.617385e-5 # eV/K
         self.max_drift_len=1e9 # maximum driftlength [um]
 
