@@ -11,6 +11,4 @@ from raser.pyfenics import FenicsCal2D
 from raser.calcurrent import CalCurrent2D
 from raser.model import Material
 from raser.model import Avalanche
-from raser.model import Material
 from raser.source import MIPs
-from drawsave import draw_2Dcurrent

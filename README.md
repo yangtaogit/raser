@@ -1,7 +1,7 @@
 RASER
 ======
 
-RAdiation SEmiconductoR
+**RA**diation **SE**miconducto**R** 
 
 
 [![Latest Version][pypi-image]][pypi-url] 
@@ -10,18 +10,14 @@ RAdiation SEmiconductoR
 Function
 ======
 
-- Simulate the time resolution of 2D and 3D SiC or SiC detector
-- Simulate the TCT and TPA scan
+- SiC Timing Detector Simulation 
 
 Dependences 
 ======
 
-- python fenics
-- pybind-geant4
-- python-tk, python-ipython, tk-dev
-- build-essential libboost-all-dev qtcreator qt5-default python3-pip
-- libgl1-mesa-dev libglu1-mesa-dev libxt-dev libxmu-dev libxi-dev zlib1g-dev
-  libgl2ps-dev libexpat1-dev libxerces-c-dev
+- [ROOT](https://root.cern.ch/building-root) 
+- [Geant4](https://geant4.web.cern.ch)
+- [FEniCS](https://fenicsproject.org)
 
 
 Example 
@@ -33,9 +29,8 @@ Example
  
  - example.py 
 
-``` 
+```python 
 import raser
-
 dset = raser.Setting(args)
 my_d = raser.R3dDetector(dset)
 my_f = raser.FenicsCal(my_d, dset.fenics)
@@ -45,9 +40,8 @@ ele_current = raser.Amplifier(my_d, dset.amplifer)
 ```
  - setting.json 
   
-```
-[
-{
+```json
+[{
 "steplength" : "1",
 "name" : "planar3D",
 
@@ -78,8 +72,7 @@ ele_current = raser.Amplifier(my_d, dset.amplifer)
 "BBGain" : "10",
 "BB_imp" : "1",
 "OscBW" : "1"
-}
-]
+}]
 
 ```
 
@@ -91,7 +84,7 @@ Contribution
 * Tao Yang, IHEP, @yangtaogit
 * Kai Liu, IHEP, @liukaihep
 * Ryuta Kiuchi, IHEP, @rkiuchi
-* Jianing Lin, Jilin U, @Zombastar
+* Jianing Lin, Jilin U, @zombastar
 * Yu Zhao, Liaoning U, @zylyz18
 * Ziyi Zhao, Hunan Normal U, @zhaoziyi1
 * Jia Wang, Hunan Normal U, @wangjia0203 
