@@ -334,7 +334,7 @@ def sic_mobility(charge,aver_e,my_d):
 
 class CalCurrent2D:
 
-    def __init__(self,track,fen,det,model,r=None,dsetlaser=None):
+    def __init__(self,track,fen,det,model,r=None):
 
         self.track = track
         self.fen = fen
@@ -370,17 +370,15 @@ class CalCurrent2D:
 
         if model == "NORMAL":
             for n in range(len(track.track_position)):
-                self.initial_tracks(n)
+                self.initial_tracks(n,model)
         elif model == "TCT":
-            self.dsetlaser = dsetlaser
+            self.r = r
             for n in range(len(track.track_position)*len(track.track_position[0])):
-                self.initial_tracks(n)
+                self.initial_tracks(n,model)
         else:
             raise NameError(model)
 
-        self.r = r  #laser focus um
-
-    def initial_tracks(self,n):
+    def initial_tracks(self,n,model):
         # initial tracks
         self.delta_track_info_dic_n["tk_"+str(n+1)] = [ [] for n in range(6) ]   # track_time, track_x, track_y, track_charges, track_current, track_gain
         self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(6) ] 
@@ -391,7 +389,7 @@ class CalCurrent2D:
         # self.delta_gain_track_info_dic_p_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
         # self.delta_gain_track_info_dic_p_p["tk_"+str(n+1)] = [ [] for n in range(5) ] 
 
-        self.cal_current()
+        self.cal_current(model)
         # self.draw_drift_path(det)
 
     def drift_diffusion(self,det,fen):
@@ -401,7 +399,7 @@ class CalCurrent2D:
         self.muhh=1650   # mobility related with the magnetic field (now silicon useless)
         self.muhe=310
         self.BB=np.array([0,0])
-        self.sstep=0.1 # drift step
+        self.sstep=1 # drift step
         self.kboltz=8.617385e-5 # eV/K
         self.max_drift_len=1e9 # maximum driftlength [um]
 
@@ -546,43 +544,41 @@ class CalCurrent2D:
         #     self.end_condition=7
         
     def cal_initial_current(self,e0,track,fen,det):
-
         self.end_condition = 0
         while(self.end_condition==0):
+            if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                self.end_condition=4
+            
+            else:
+                efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
+                efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
 
-        if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
-            self.end_condition=4
+                ef = np.array([efx,efy])
+                ef_value = np.linalg.norm(ef)*1e4
 
-        else:
-            efx = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_x_value)
-            efy = fen.cal_point_field(self.track_x, self.track_y,fen.electric_field_y_value)
+                self.e_field = np.array([efx,efy])
 
-            ef = np.array([efx,efy])
-            ef_value = np.linalg.norm(ef)*1e4
+                wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
+                wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
 
-            self.e_field = np.array([efx,efy])
+                wef = np.array([wefx,wefy])
+                wef_value = np.linalg.norm(wef)*1e4
 
-            wefx = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_x_value)
-            wefy = fen.cal_point_field(self.track_x, self.track_y,fen.weighting_electric_field_y_value)
+                self.we_field = np.array([wefx,wefy])                                
 
-            wef = np.array([wefx,wefy])
-            wef_value = np.linalg.norm(wef)*1e4
+                self.drift_diffusion(det,fen)
 
-            self.we_field = np.array([wefx,wefy])                                
+                # SR current
 
-            self.drift_diffusion(det,fen)
+                self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
 
-            # SR current
-
-            self.track_current = abs(self.charges*e0*self.drift_velocity*wef_value)
-
-            self.update_track_info()
-            self.update_step(det)
-            self.update_end_condition()
+                self.update_track_info()
+                self.update_step(det)
+                self.update_end_condition()
 
     def cal_gain_current(self,i):
         for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
-                
+            print(j)
             if(self.delta_track_info_dic_p["tk_"+str(i+1)][5][j]>1.0):
                 tmp_gain_time = self.delta_track_info_dic_p["tk_"+str(i+1)][0][j]
                 tmp_gain_x = self.delta_track_info_dic_p["tk_"+str(i+1)][1][j]
@@ -597,7 +593,6 @@ class CalCurrent2D:
                 self.delta_gain_track_info_dic["tk_"+str(i+1)+"_p_n"] = [ [] for n in range(5) ]
                 self.delta_gain_track_info_dic["tk_"+str(i+1)+"_p_p"] = [ [] for n in range(5) ]
 
-                break
 
         for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
 
@@ -616,7 +611,6 @@ class CalCurrent2D:
                 self.delta_gain_track_info_dic["tk_"+str(i+1)+"_n_n"] = [ [] for n in range(5) ]
                 self.delta_gain_track_info_dic["tk_"+str(i+1)+"_n_p"] = [ [] for n in range(5) ]
 
-                break
 
     def input_initial_current(self,det,i):
         for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
@@ -631,7 +625,7 @@ class CalCurrent2D:
         temp_positive_cu.Reset()
         temp_negitive_cu.Reset()
 
-    def cal_current(self):
+    def cal_current(self,model):
 
         e0 = 1.60217733e-19
         track = self.track
@@ -663,19 +657,20 @@ class CalCurrent2D:
                     #print("current position "+str(i)+" : "+str(self.track_x)+","+str(self.track_y))
                                 
                     # print(self.end_condition)
-                    cal_initial_current(self,e0,track,fen,det)
+                    self.cal_initial_current(e0,track,fen,det)
 
         elif model =="TCT":
             self.track_number = 0
-            track.nocarrier(self.r,self.dsetlaser)
+            track.nocarrier(self.r)
             for i in range(len(track.track_position)):
                 for m in range(len(track.track_position[i])):
+                    print(i,m)
                     self.track_number = self.track_number + 1
                     for j in range(2):
                         if(j==0):
-                            self.charges = 1*ionized_pairs[m,i] # hole                    
+                            self.charges = 1*track.ionized_pairs[m,i] # hole                    
                         if(j==1):
-                            self.charges = -1*ionized_pairs[m,i] # electron
+                            self.charges = -1*track.ionized_pairs[m,i] # electron
                         self.track_time = 0.
                         self.track_x = track.track_position[i][m][0]
                         self.track_y = track.track_position[i][m][1]
@@ -686,10 +681,7 @@ class CalCurrent2D:
                         #print("current position "+str(i)+" : "+str(self.track_x)+","+str(self.track_y))
                                 
                         #print(self.end_condition)
-                        cal_initial_current(self,e0,track,fen,det)
-            
-        else:
-            raise NameError(model)
+                        CalCurrent2D.cal_initial_current(self,e0,track,fen,det)
 
         #
         # gian carrier track
@@ -699,16 +691,13 @@ class CalCurrent2D:
         self.gain_track_info_list = [] #[[name,time,x,y,charges]]
         if model == "NORMAL":
             for i in range(len(track.track_position)):
-                cal_gain_current(i)
+                self.cal_gain_current(i)
 
         elif model == "TCT":
             for i in range(len(track.track_position)):
                 for m in range(len(track.track_position[i])):
                     n = i*(len(track.track_position[0]))+m
-                    cal_gain_current(n)
-
-        else:
-            raise NameError(model)
+                    self.cal_gain_current(n)
 
         #
         # cal gain current
@@ -775,13 +764,13 @@ class CalCurrent2D:
         #
         if model == "NORMAL":
             for i in range(len(track.track_position)):
-                input_initial_current(self,det,i)
+                self.input_initial_current(self,det,i)
 
         elif model == "TCT":
             for i in range(len(track.track_position)):
                 for m in range(len(track.track_position[i])):
                     n = i*(len(track.track_position[0]))+m
-                    input_initial_current(self,det,n)
+                    self.input_initial_current(self,det,n)
 
         else:
             raise NameError(model)
@@ -844,12 +833,6 @@ class CalCurrent2D:
             det.gain_p_n_cu.Scale(current_scale)
             det.gain_p_p_cu.Scale(current_scale)
             det.sum_cu.Scale(current_scale)
-
-        elif model == "TCT":
-            break
-
-        else:
-            raise NameError(model)
         
     def draw_drift_path(self,det):
         # ROOT.gStyle.SetOptStat(0)

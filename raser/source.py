@@ -1,5 +1,6 @@
 import math
 import ROOT
+import numpy as np
 
 """ Define Track """
 
@@ -32,18 +33,28 @@ class MIPs:
                 track_position_x = x_div_point
                 track_position_y = y_div_point
 
-        elif model = "TCT":
-            i_z = det_dic["z_nBins"]
-            i_r = det_dic["r_nBins"]
-            self.track_position = [[[] for n in range(i_z)]for m in range(i_r)]
-            for i in range(i_r):
+        elif model == "TCT":
+            self.i_z = int(det_dic["z_nBins"])
+            self.i_r = int(det_dic["r_nBins"])
+            self.zlen = det_dic["det_width"]
+            self.rlen = det_dic["det_thin"]
+            self.z_o = det_dic["z_o"]
+            self.tau = det_dic["tau"]
+            self.alfa = det_dic["alfa"]
+            self.power = det_dic["power"]
+            self.wavelength = det_dic["wavelength"]
+            self.widthBeamWaist = det_dic["widthBeamWaist"]
+            self.refractionIndex = det_dic["refractionIndex"]
+
+            self.track_position = [[[] for n in range(self.i_z)]for m in range(self.i_r)]
+            for i in range(self.i_r):
                 self.track_entry = [0,i]
-                self.track_exit = [zlen,i]
+                self.track_exit = [self.zlen,i]
                 track_position_x = self.track_entry[0]
                 track_position_y = self.track_entry[1]
-                for j in range(i_z):
-                    x_div_point = j*(zlen/i_z)+ (zlen/(i_z*2))
-                    y_div_point = i*(rlen/i_r)+ (rlen/(i_r*2))
+                for j in range(self.i_z):
+                    x_div_point = j*(self.zlen/self.i_z)+ (self.zlen/(self.i_z*2))
+                    y_div_point = i*(self.rlen/self.i_r)+ (self.rlen/(self.i_r*2))
                     self.track_position[i][j].append(x_div_point)
                     self.track_position[i][i].append(y_div_point)
 
@@ -87,23 +98,23 @@ class MIPs:
 
         return Lan_pairs
 
-    def nocarrier(self,r,dsetlaser):
-        z_o = dsetlaser["z_o"]
-        rlen = dsetlaser["rlen"]
-        zlen = dsetlaser["zlen"]
+    def nocarrier(self,r):
+        z_o = self.z_o
+        rlen = self.rlen
+        zlen = self.zlen
         r_min = -r   #um
         r_max = -r + rlen
-        r_nBins = dsetlaser["r_nBins"]
+        r_nBins = self.i_r
         z_min = 0.    #um
         z_max = zlen  #um
-        z_nBins = dsetlaser["z_nBins"]
+        z_nBins = self.i_z
 
-        tau = dsetlaser["tau"]
-        alfa = dsetlaser["alfa"]
-        power = dsetlaser["power"]
-        wavelength = dsetlaser["wavelength"]
-        widthBeamWaist = dsetlaser["widthBeamWaist"]
-        refractionIndex = dsetlaser["refractionIndex"]
+        tau = self.tau
+        alfa = self.alfa
+        power = self.power
+        wavelength = self.wavelength
+        widthBeamWaist = self.widthBeamWaist
+        refractionIndex = self.refractionIndex
 
         my_pro = ProjGrid(r_min, r_max, r_nBins, z_max, z_min, z_nBins, z_o)
         rGrid, zGrid = np.meshgrid(my_pro.rArray,my_pro.zArray)
@@ -123,6 +134,7 @@ class MIPs:
                 # Project sum and take into account integral step
                 projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
         self.ionized_pairs = projGrid*my_pro.x_step*my_pro.z_step
+        print(self.ionized_pairs)
 
 class SPAGeneration():
     def __init__(self,tau,alfa,power,wavelength,widthBeamWaist,refractionIndex):

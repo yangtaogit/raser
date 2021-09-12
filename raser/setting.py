@@ -110,10 +110,17 @@ class Setting:
             detector = {'name':'silicon_TCT',
                         'det_width':p['det_width'], 'det_thin':p['det_thin'],
                         'x_step':p['x_step'], 'y_step':p['y_step'],
-                        'material':p['material'],
-                        'doping_epr':p['doping_epr'],
+                        'material':p['material'],'doping_epr':p['doping_epr'],
                         'bias_voltage':p['bias_voltage'],
-                        'temperature':p['temperature']}
+                        'temperature':p['temperature'],
+                        'z_nBins':p['z_nBins'], 'r_nBins':p['r_nBins'],
+                        'tau':p['tau'],'alfa':p['alfa'],'power':p['power'],
+                        'power':p['power'],'wavelength':p['wavelength'],
+                        'widthBeamWaist':p['widthBeamWaist'],
+                        'refractionIndex':p['refractionIndex'],
+                        'z_o':p['z_o'],'z_nBins':p['z_nBins'],
+                        'r_nBins':p['r_nBins'],'zlen':p['det_width'],
+                        'rlen':p['det_thin']}
         return detector
 
     @property
@@ -287,7 +294,8 @@ class Setting:
                         'refractionIndex':p['refractionIndex'],
                         'z_o':p['z_o'], 'z_nBins':p['z_nBins'],
                         'r_nBins':p['r_nBins'], 'zlen':p['det_width'],
-                        'rlen':'det_thin'}
+                        'rlen':p['det_thin']}
+        return laser
 
     def is_number(self,s):
         "Define whethre the s is a number or not"
