@@ -96,8 +96,8 @@ class Setting:
                         'e_ir':p['e_ir'], 'e_gap':p['e_gap']
                         }
         
-        if "silicon_lgad2D" in self.det_model:
-            detector = {'name':'silicon_lgad2D',
+        if "lgad2D" in self.det_model:
+            detector = {'name':'lgad2D',
                         'det_width':p['det_width'], 'det_thin':p['det_thin'],
                         'x_step':p['x_step'], 'y_step':p['y_step'],
                         'material':p['material'],
