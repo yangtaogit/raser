@@ -150,18 +150,18 @@ class Avalanche:
                 b_low = 2.036e6 # cm-1
                 b_high = 1.693e6 # cm-1
 
-                _lambda = 45e-8 #cm
+                Glambda = 45e-8 #cm
 
-                _beta_low = 0.815009 # 1
-                _beta_high =  0.677706 # 1
+                beta_low = 0.815009 # 1
+                beta_high =  0.677706 # 1
 
-            _gamma = math.tanh(hbarOmega/(2*k_T0))/math.tanh(hbarOmega/(2*k_T0*T/T0))
+            Ggamma = math.tanh(hbarOmega/(2*k_T0))/math.tanh(hbarOmega/(2*k_T0*T/T0))
             
             if(E>1.75e05):
                 if(E>E0):
-                    coefficient = _gamma*a_high*math.exp(-(_gamma*b_high)/E)
+                    coefficient = Ggamma*a_high*math.exp(-(Ggamma*b_high)/E)
                 else:
-                    coefficient = _gamma*a_low*math.exp(-(_gamma*b_low)/E)
+                    coefficient = Ggamma*a_low*math.exp(-(Ggamma*b_low)/E)
             else:
                 coefficient = 0.
 
