@@ -375,7 +375,7 @@ class CalCurrent2D:
             self.delta_track_info_dic_p["tk_"+str(n+1)] = [ [] for n in range(6) ] 
 
         self.cal_current()
-        # self.draw_drift_path(det)
+        self.draw_drift_path(det)
 
     
     def drift_diffusion(self,det,fen):
@@ -447,9 +447,11 @@ class CalCurrent2D:
             self.dif_y=0
             self.end_condition = 9
         else:
-            
-            DiffOffField=8*1e4 #V/cm
-            #print("ef_value = "+str(ef_value))
+            if(det.mat_name=='Si'):
+                DiffOffField=8*1e4 #V/cm
+            if(det.mat_name=='SiC'):
+                DiffOffField=100*1e4 #V/cm
+                
             if(ef_value<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.drift_velocity
                 s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
@@ -464,7 +466,7 @@ class CalCurrent2D:
         #
         # multiplication
         #
-        my_avalanche = Avalanche('vanOverstraeten')
+        my_avalanche = Avalanche(det.par_dict['Avalanche'])
         tmp_coefficient = my_avalanche.cal_coefficient(ef_value,self.charges,det.temperature)
 
         self.s_gain = math.exp(self.sstep*1e-4*tmp_coefficient)
@@ -526,7 +528,7 @@ class CalCurrent2D:
         #     self.end_condition=0
             
         # if(self.path_len>self.max_drift_len):
-        #     self.end_condition=6
+        #     self.end_condition=5
         # if(self.n_step>10000):
         #     self.end_condition=7
         
@@ -747,11 +749,11 @@ class CalCurrent2D:
             if(tmp_track_name[-3:]=='n_p'):
                 det.gain_n_p_cu.Add(temp_gain_cu)
 
-            # if(tmp_track_name[-3:]=='p_n'):
-            #     det.gain_p_n_cu.Add(temp_gain_cu)
+            if(tmp_track_name[-3:]=='p_n'):
+                det.gain_p_n_cu.Add(temp_gain_cu)
 # 
-            # if(tmp_track_name[-3:]=='p_p'):
-            #     det.gain_p_p_cu.Add(temp_gain_cu)
+            if(tmp_track_name[-3:]=='p_p'):
+                det.gain_p_p_cu.Add(temp_gain_cu)
 
 
             temp_gain_cu.Reset()
@@ -850,4 +852,4 @@ class CalCurrent2D:
         c1.cd(2)
         mg2.Draw("APL")
 
-        c1.SaveAs("./fig/silicon_lgad_2D_drift_path_150V.pdf")
+        c1.SaveAs("./fig/%s_lgad_2D_drift_path_%dV.pdf"%(det.mat_name,det.bias_voltage))
