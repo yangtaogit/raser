@@ -159,7 +159,7 @@ class CalCurrent:
         if(total_ef!=0):
             self.delta_x=-self.sstep*self.charg*FF[0]/total_ef
             self.delta_y=-self.sstep*self.charg*FF[1]/total_ef
-            self.delta_z=-self.*self.charg*FF[2]/total_ef
+            self.delta_z=-self.self.charg*FF[2]/total_ef
         else:
             self.delta_x=0.0
             self.delta_y=0.0
@@ -523,7 +523,6 @@ class CalCurrent2D:
                 s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
                 self.dif_x=random.gauss(0,s_sigma)*1e4
                 self.dif_y=random.gauss(0,s_sigma)*1e4
-
 
             else:
                 self.dif_x=0.0
@@ -1008,6 +1007,7 @@ class CalCurrent2D:
                                 self.update_track_info()
                                 self.update_step(det)
                                 self.update_end_condition()
+            print("ttest1")
             #
             # gian carrier track
             #
