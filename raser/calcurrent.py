@@ -976,8 +976,10 @@ class CalCurrent2D_TCT:
             if(ef_value<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.drift_velocity
                 s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
-                self.dif_x=random.gauss(0,s_sigma)*1e4
-                self.dif_y=random.gauss(0,s_sigma)*1e4
+                #self.dif_x=random.gauss(0,s_sigma)*1e4
+                #self.dif_y=random.gauss(0,s_sigma)*1e4
+                self.dif_x = 0.
+                self.dif_y = 0.
 
 
             else:
@@ -1050,8 +1052,8 @@ class CalCurrent2D_TCT:
             
         # if(self.path_len>self.max_drift_len):
         #     self.end_condition=6
-        if(self.n_step>10000):
-            self.end_condition=7
+        # if(self.n_step>10000):
+            # self.end_condition=7
         
 
     def cal_current(self):
@@ -1188,7 +1190,7 @@ class CalCurrent2D_TCT:
             self.end_condition = 0
             while(self.end_condition==0):
 
-                if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                if(self.track_y>=(det.det_thin-0.5) or self.track_x>=(det.det_width-5)):
                      
                     self.end_condition=4
 
@@ -1236,7 +1238,6 @@ class CalCurrent2D_TCT:
         for i in range(len(track.track_position)):
             for m in range(len(track.track_position[i])):
                 n = i*len(track.track_position[0])+m
-
                 for j in range(len(self.delta_track_info_dic_p["tk_"+str(n+1)][0])):
                     temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(n+1)][0][j], self.delta_track_info_dic_p["tk_"+str(n+1)][4][j])
 
