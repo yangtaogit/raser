@@ -939,6 +939,9 @@ class CalCurrent2D_TCT:
             self.delta_y=0 
 
         # cal current step ef & wef
+        #print(np.linalg.norm(FF))
+        print(self.delta_x)
+        #print(self.delta_y)
         efx = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.electric_field_x_value)
         efy = fen.cal_point_field(self.track_x+self.delta_x, self.track_y+self.delta_y,fen.electric_field_y_value)
         ef = np.array([efx,efy])
@@ -1050,10 +1053,10 @@ class CalCurrent2D_TCT:
         else: 
             self.end_condition=0
             
-        # if(self.path_len>self.max_drift_len):
-        #     self.end_condition=6
-        # if(self.n_step>10000):
-            # self.end_condition=7
+        if(self.path_len>self.max_drift_len):
+            self.end_condition=6
+        if(self.n_step>10000):
+            self.end_condition=7
         
 
     def cal_current(self):
@@ -1069,6 +1072,7 @@ class CalCurrent2D_TCT:
         self.track_number = 0
         for i in range(len(track.track_position)):
             for m in range(len(track.track_position[i])):
+                print(i,m)
 
                 self.track_number = self.track_number+1
 
