@@ -877,6 +877,7 @@ class CalCurrent2D_TCT:
         self.track_charges = 0.
         self.track_current = 0.
 
+        self.n_step = 0
         self.end_condition = 0
 
         self.delta_x=0.
@@ -1038,19 +1039,19 @@ class CalCurrent2D_TCT:
         
     def update_end_condition(self):
 
-        # if(self.we_field>(1-1e-5)):
-        #     self.end_condition=1
+        if(self.we_field.all()>(1-1e-5)):
+            self.end_condition=1
         if(self.track_x<=0):
             self.end_condition=2
         if(self.track_y<=0):
             self.end_condition=3
-        # else: 
-        #     self.end_condition=0
+        else: 
+            self.end_condition=0
             
         # if(self.path_len>self.max_drift_len):
         #     self.end_condition=6
-        # if(self.n_step>10000):
-        #     self.end_condition=7
+        if(self.n_step>10000):
+            self.end_condition=7
         
 
     def cal_current(self):
@@ -1117,6 +1118,7 @@ class CalCurrent2D_TCT:
                             self.update_track_info()
                             self.update_step(det)
                             self.update_end_condition()
+                        self.n_step +=1
 
 
         #
