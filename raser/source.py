@@ -8,30 +8,6 @@ class MIPs:
 
     # MIPs particle
     def __init__(self):
-        
-        track_entry = [25.0,0]
-        track_exit = [25.0,50.0]
-        n_div = 100
-
-        self.track_position = [ [] for n in range(n_div-1) ]
-        self.delta_track = []
-
-        # start position
-        track_position_x=track_entry[0]
-        track_position_y=track_entry[1]
-
-        for i in range(n_div-1):
-            
-            x_div_point = (track_exit[0]-track_entry[0])/n_div*i+track_entry[0]+(track_exit[0]-track_entry[0])/(2*n_div)
-            y_div_point = (track_exit[1]-track_entry[1])/n_div*i+track_entry[1]+(track_exit[1]-track_entry[1])/(2*n_div)
-
-            self.track_position[i].append(x_div_point)
-            self.track_position[i].append(y_div_point)
-
-            self.delta_track.append(math.sqrt(math.pow(x_div_point-track_position_x,2)+math.pow(y_div_point-track_position_y,2)))
-
-            track_position_x = x_div_point
-            track_position_y = y_div_point
 
         track_entry = [25.0,0]
         track_exit = [25.0,50.0]
@@ -56,8 +32,6 @@ class MIPs:
 
             track_position_x = x_div_point
             track_position_y = y_div_point
-        
-        self.mips_ionized()
     
     def mips_ionized(self):
 

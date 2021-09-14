@@ -124,32 +124,6 @@ class Setting:
                         'bias_voltage':p['bias_voltage'],
                         'temperature':p['temperature']
                         }
-
-        if "pin2D" in self.det_model:
-            detector = {'name':'pin2D',
-                        'det_width':p['det_width'], 'det_thin':p['det_thin'],
-                        'x_step':p['x_step'], 'y_step':p['y_step'],
-                        'material':p['material'],
-                        'doping_epr':p['doping_epr'],
-                        'bias_voltage':p['bias_voltage'],
-                        'temperature':p['temperature']
-                        }
-
-        if "silicon_TCT" in self.det_model:
-            detector = {'name':'silicon_TCT',
-                        'det_width':p['det_width'], 'det_thin':p['det_thin'],
-                        'x_step':p['x_step'], 'y_step':p['y_step'],
-                        'material':p['material'],'doping_epr':p['doping_epr'],
-                        'bias_voltage':p['bias_voltage'],
-                        'temperature':p['temperature'],
-                        'z_nBins':p['z_nBins'], 'r_nBins':p['r_nBins'],
-                        'tau':p['tau'],'alfa':p['alfa'],'power':p['power'],
-                        'power':p['power'],'wavelength':p['wavelength'],
-                        'widthBeamWaist':p['widthBeamWaist'],
-                        'refractionIndex':p['refractionIndex'],
-                        'z_o':p['z_o'],'z_nBins':p['z_nBins'],
-                        'r_nBins':p['r_nBins'],'zlen':p['det_width'],
-                        'rlen':p['det_thin']}
         return detector
 
     @property
