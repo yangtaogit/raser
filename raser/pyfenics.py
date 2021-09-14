@@ -501,8 +501,8 @@ class FenicsCal2D:
         #Interpolation method 
         print(px_point)
         print(py_point)
-        np.nan_to_num(px_point, copy=True, nan=0.0)
-        np.nan_to_num(py_point, copy=True, nan=0.0)
+        px_point =np.nan_to_num(px_point, copy=True, nan=0.0)
+        py_point =np.nan_to_num(py_point, copy=True, nan=0.0)
         print(px_point)
         print(py_point)
         rex_value=px_point%x_step
