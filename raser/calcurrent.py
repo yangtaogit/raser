@@ -1078,8 +1078,8 @@ class CalCurrent2D_TCT:
                         self.charges=-1*track.ionized_pairs[m,i] # electron
                 
                     self.track_time = 0.
-                    self.track_x = track.track_position[i][0]
-                    self.track_y = track.track_position[i][1]
+                    self.track_x = track.track_position[i][m][0]
+                    self.track_y = track.track_position[i][m][1]
                     self.track_charges = 0.
                     self.track_current = 0.
                     self.track_gain = 1.
@@ -1235,11 +1235,11 @@ class CalCurrent2D_TCT:
             for m in range(len(track.track_position[i])):
                 n = i*len(track.track_position[0])+m
 
-                for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
-                    temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(i+1)][0][j], self.delta_track_info_dic_p["tk_"+str(i+1)][4][j])
+                for j in range(len(self.delta_track_info_dic_p["tk_"+str(n+1)][0])):
+                    temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(n+1)][0][j], self.delta_track_info_dic_p["tk_"+str(n+1)][4][j])
 
-                for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
-                    temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
+                for k in range(len(self.delta_track_info_dic_n["tk_"+str(n+1)][0])):
+                    temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(n+1)][0][k], self.delta_track_info_dic_n["tk_"+str(n+1)][4][k])
 
                 det.positive_cu.Add(temp_positive_cu)
                 det.negtive_cu.Add(temp_negitive_cu)
