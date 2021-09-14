@@ -7,60 +7,31 @@ import numpy as np
 class MIPs:
 
     # MIPs particle
-    def __init__(self,model,det_dic=None):
+    def __init__(self):
         
-        if model == "NORMAL":
-            track_entry = [25.0,0]
-            track_exit = [25.0,50.0]
-            n_div = 100
+        track_entry = [25.0,0]
+        track_exit = [25.0,50.0]
+        n_div = 100
 
-            self.track_position = [ [] for n in range(n_div-1) ]
-            self.delta_track = []
+        self.track_position = [ [] for n in range(n_div-1) ]
+        self.delta_track = []
 
-            # start position
-            track_position_x=track_entry[0]
-            track_position_y=track_entry[1]
+        # start position
+        track_position_x=track_entry[0]
+        track_position_y=track_entry[1]
 
-            for i in range(n_div-1):
-                
-                x_div_point = (track_exit[0]-track_entry[0])/n_div*i+track_entry[0]+(track_exit[0]-track_entry[0])/(2*n_div)
-                y_div_point = (track_exit[1]-track_entry[1])/n_div*i+track_entry[1]+(track_exit[1]-track_entry[1])/(2*n_div)
+        for i in range(n_div-1):
+            
+            x_div_point = (track_exit[0]-track_entry[0])/n_div*i+track_entry[0]+(track_exit[0]-track_entry[0])/(2*n_div)
+            y_div_point = (track_exit[1]-track_entry[1])/n_div*i+track_entry[1]+(track_exit[1]-track_entry[1])/(2*n_div)
 
-                self.track_position[i].append(x_div_point)
-                self.track_position[i].append(y_div_point)
+            self.track_position[i].append(x_div_point)
+            self.track_position[i].append(y_div_point)
 
-                self.delta_track.append(math.sqrt(math.pow(x_div_point-track_position_x,2)+math.pow(y_div_point-track_position_y,2)))
+            self.delta_track.append(math.sqrt(math.pow(x_div_point-track_position_x,2)+math.pow(y_div_point-track_position_y,2)))
 
-                track_position_x = x_div_point
-                track_position_y = y_div_point
-
-        elif model == "TCT":
-            self.i_z = int(det_dic["z_nBins"])
-            self.i_r = int(det_dic["r_nBins"])
-            self.zlen = det_dic["det_width"]
-            self.rlen = det_dic["det_thin"]
-            self.z_o = det_dic["z_o"]
-            self.tau = det_dic["tau"]
-            self.alfa = det_dic["alfa"]
-            self.power = det_dic["power"]
-            self.wavelength = det_dic["wavelength"]
-            self.widthBeamWaist = det_dic["widthBeamWaist"]
-            self.refractionIndex = det_dic["refractionIndex"]
-
-            self.track_position = [ [ [] for n in range(self.i_z)] for m in range(self.i_r)]
-            for i in range(self.i_r):
-                self.track_entry = [0,i]
-                self.track_exit  = [self.zlen,i]
-                track_position_x = self.track_entry[0]
-                track_position_y = self.track_entry[1]
-                for j in range(self.i_z):
-                    x_div_point = j*(self.zlen/self.i_z)+ (self.zlen/(self.i_z*2))
-                    y_div_point = i*(self.rlen/self.i_r)+ (self.rlen/(self.i_r*2))
-                    self.track_position[i][j].append(x_div_point)
-                    self.track_position[i][i].append(y_div_point)
-
-        else:
-            raise NameError(model)
+            track_position_x = x_div_point
+            track_position_y = y_div_point
 
     def mips_ionized(self):
 
@@ -98,6 +69,34 @@ class MIPs:
 
         return Lan_pairs
 
+class MIPs_TCT:
+    # MIPs particle
+    def __init__(self,det_dic,r):
+
+        self.i_z = int(det_dic["z_nBins"])
+        self.i_r = int(det_dic["r_nBins"])
+        self.zlen = det_dic["det_width"]
+        self.rlen = det_dic["det_thin"]
+        self.z_o = det_dic["z_o"]
+        self.tau = det_dic["tau"]
+        self.alfa = det_dic["alfa"]
+        self.power = det_dic["power"]
+        self.wavelength = det_dic["wavelength"]
+        self.widthBeamWaist = det_dic["widthBeamWaist"]
+        self.refractionIndex = det_dic["refractionIndex"]
+
+        self.track_position = [ [ [] for n in range(self.i_z)] for m in range(self.i_r)]
+        for i in range(self.i_r):
+            self.track_entry = [0,i]
+            self.track_exit  = [self.zlen,i]
+            track_position_x = self.track_entry[0]
+            track_position_y = self.track_entry[1]
+            for j in range(self.i_z):
+                x_div_point = j*(self.zlen/self.i_z)+ (self.zlen/(self.i_z*2))
+                y_div_point = i*(self.rlen/self.i_r)+ (self.rlen/(self.i_r*2))
+                self.track_position[i][j].append(x_div_point)
+                self.track_position[i][i].append(y_div_point)
+
     def nocarrier(self,r):
         z_o = self.z_o
         rlen = self.rlen
@@ -134,7 +133,7 @@ class MIPs:
                 # Project sum and take into account integral step
                 projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
         self.ionized_pairs = projGrid*my_pro.x_step*my_pro.z_step
-        print(self.ionized_pairs)
+
 
 class SPAGeneration():
     def __init__(self,tau,alfa,power,wavelength,widthBeamWaist,refractionIndex):
