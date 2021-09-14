@@ -1087,7 +1087,7 @@ class CalCurrent2D_TCT:
                     self.end_condition = 0
                     while(self.end_condition==0):
 
-                        if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
+                        if(self.track_y>=(det.det_thin-0.5) or self.track_x>=(det.det_width-5)):
                          
                             self.end_condition=4
 
