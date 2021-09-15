@@ -96,6 +96,7 @@ class MIPs_TCT:
                 y_div_point = i*(self.rlen/self.i_r)+ (self.rlen/(self.i_r*2))
                 self.track_position[i][j].append(x_div_point)
                 self.track_position[i][j].append(y_div_point)
+        print(track_position)
 
     def nocarrier(self,r):
         z_o = self.z_o
