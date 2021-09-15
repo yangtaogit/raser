@@ -23,7 +23,10 @@ class Setting:
         _pardic : dictionaries
             Storage the input parameters
         steplength : float
-            The length of  each step for e-h pairs drift 
+            The length of  each step for e-h pairs drift
+        laser_model : str
+            Define the Laser Absorption Pattern 
+        
         @Modify:
         ---------
             2021/09/02
@@ -32,6 +35,9 @@ class Setting:
         self.input2dic(parameters)
         self.det_model = self._pardic['det_model']
         self.read_par(self._pardic['parfile'])
+        if "laser_model" in self._pardic:
+            self.laser_model=self._pardic['laser_model']
+            self.append_par(self._pardic['laser_file'])
         self.scan_variation()
 
     def input2dic(self,parameters):
@@ -54,6 +60,18 @@ class Setting:
             else:
                 paras[x] = paras[x]
         self.paras = paras
+
+    def append_par(self,jsonfile):
+        "Read the laser.json file and save the input parameters in paras"
+        with open(jsonfile) as f:
+            dic_pars = json.load(f)
+        for dic_par in dic_pars:
+            for x in dic_par: 
+                if self.is_number(dic_par[x]):          
+                    dic_par[x] = float(dic_par[x])
+                else:
+                    dic_par[x] = dic_par[x]
+            self.paras.update(dic_par) 
 
     @property
     def detector(self):
@@ -200,6 +218,57 @@ class Setting:
     #                  'track_exit':[25,50],
     #                  'n_div':100}      
     #     return track_par
+
+    @property
+    def laser(self):
+        """
+        Description:
+            Define laser parameters
+        Parameters:
+        ---------
+        tech : str
+            Interaction Pattern Between Laser and Detector
+        direction : str
+            Direction of Laser Incidence, Could be "top" "edge" or "bottom"
+
+        alpha : float
+            the Linear Absorption Coefficient of the Bulk of the Device
+        beta_2 : float
+            the Quadratic Absorption Coefficient of the Bulk of the Device
+        refractionIndex :float
+            the Refraction Index of the Bulk of the Device
+
+        wavelength : float
+            the Wavelength of Laser in nm
+        tau : float
+            the Full-width at Half-maximum (FWHM) of the Beam Temporal Profile
+        power : float
+            the Energy per Laser Pulse
+        widthBeamWaist : float
+            the Width of the Beam Waist of the Laser in um
+        l_Rayleigh : float
+            the Rayleigh Width of the Laser Beam
+
+        r_step, h_step : float
+            the Step Length of Block in um,
+            Carriers Generated in the Same Block Have the Same Drift Locus
+        @Returns:
+        ---------
+            A dictionary containing all parameters used in TCTTracks 
+        @Modify:
+        ---------
+            2021/09/08
+        """
+        p = self.paras
+        if hasattr(self,"laser_model"):
+            laser = {'tech':p['laser_model'],'direction':p['direction'],
+                    'alpha':p['alpha'],'beta_2':p['beta_2'],'refractionIndex':p['refractionIndex'],
+                    "wavelength":p["wavelength"],"tau":p["tau"],"power":p["power"],"widthBeamWaist":p["widthBeamWaist"],
+                    'r_step':p['r_step'],'h_step':p['h_step']
+                    }
+            if 'l_Rayleigh' in p:
+                laser.update({'l_Rayleigh':p['l_Rayleigh']})
+        return laser
 
     @property
     def amplifer(self):
