@@ -751,7 +751,7 @@ class CalCurrent2D:
 
             if(tmp_track_name[-3:]=='p_n'):
                 det.gain_p_n_cu.Add(temp_gain_cu)
-# 
+                
             if(tmp_track_name[-3:]=='p_p'):
                 det.gain_p_p_cu.Add(temp_gain_cu)
 
@@ -1089,3 +1089,5 @@ class CalCurrent2DTCT(CalCurrent2D):
         det.sum_cu.Add(det.negative_cu)
         det.sum_cu.Add(det.gain_positive_cu)
         det.sum_cu.Add(det.gain_negative_cu)
+        
+        c1.SaveAs("./fig/%s_lgad_2D_drift_path_%dV.pdf"%(det.mat_name,det.bias_voltage))

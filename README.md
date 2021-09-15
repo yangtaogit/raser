@@ -15,7 +15,7 @@ Function
 Dependences 
 ======
 
-- [ROOT](https://root.cern.ch/building-root) 
+- [ROOT](https://root.cern.ch) 
 - [Geant4](https://geant4.web.cern.ch)
 - [FEniCS](https://fenicsproject.org)
 
