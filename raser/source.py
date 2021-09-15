@@ -1,8 +1,13 @@
 import math
-import numpy as np
 import ROOT
+import numpy as np
+from raser.geometry import R2dDetector
+from raser.geometry import R3dDetector
 
 """ Define Track """
+
+'''x_rel, y_rel, z_rel : float
+            the Normalized Laser Focus Position'''
 
 class MIPs:
 
@@ -78,135 +83,121 @@ class TCTTracks():
         self.beta_2=laser["beta_2"]
         self.refractionIndex=laser["refractionIndex"]
 
-        self.wavelength=laser["wavelength"]
+        self.wavelength=laser["wavelength"]*1e-3 #um
         self.tau=laser["tau"]
         self.power=laser["power"]
-        self.widthBeamWaist=laser["widthBeamWaist"]
+        self.widthBeamWaist=laser["widthBeamWaist"]#um
         
-        self.x_rel=laser["x_rel"]
-        self.y_rel=laser["y_rel"]
-        self.z_rel=laser["z_rel"]
+        self.r_step=laser["r_step"]#um
+        self.h_step=laser["h_step"]#um
+
+        if isinstance(my_d,R2dDetector):
+            self.lx=my_d.det_width#um
+            self.ly=my_d.det_thin
+            self.lz=my_d.det_width
+
+        elif isinstance(my_d,R3dDetector):
+            self.lx=my_d.l_x#um
+            self.ly=my_d.l_y
+            self.lz=my_d.l_z
 
         if "l_Reyleigh" not in laser:
             self.l_Rayleigh = np.pi*self.widthBeamWaist**2*self.refractionIndex/self.wavelength
         else:
-            self.l_Rayleigh=laser["l_Rayleigh"]
+            self.l_Rayleigh = laser["l_Rayleigh"]#um
 
-        if self.tech =="SPA":
-            x_min=0               #um
-            x_max=my_d.det_width
-            y_min=0
-            y_max=my_d.det_thin
-            z_min=0
-            z_max=my_d.det_width
-
-            r_step=1
-            h_step=10
-        elif self.tech =="TPA":
-            '''
-            gen_vol_rel = 5
-            r_div=10
-            h_div=50
-
-            x_min = max(0,self.x_rel*my_d.det_width-gen_vol_rel*self.l_Rayleigh*1e6)
-            x_max = min(my_d.det_width,self.x_rel*my_d.det_width+gen_vol_rel*self.l_Rayleigh*1e6)
-            y_min = max(0,self.y_rel*my_d.det_thin-gen_vol_rel*self.widthBeamWaist*1e6)
-            y_max = min(my_d.det_thin,self.y_rel*my_d.det_thin+gen_vol_rel*self.widthBeamWaist*1e6)       
-            z_min = max(0,self.z_rel*my_d.det_width-gen_vol_rel*self.widthBeamWaist*1e6)
-            z_max = min(my_d.det_width,self.z_rel*my_d.det_width+gen_vol_rel*self.widthBeamWaist*1e6)
-
-            r_step = 2*gen_vol_rel*self.widthBeamWaist*1e6/r_div
-            h_step = 2*gen_vol_rel*self.l_Rayleigh*1e6/h_div
-            '''
-            x_min=0               #um
-            x_max=my_d.det_width
-            y_min=0
-            y_max=my_d.det_thin
-            z_min=0
-            z_max=my_d.det_width
-
-            r_step=5
-            h_step=100
-            
         if self.direction in ("top","bottom"):
-            y_step=h_step
-            z_step=x_step=r_step
+            y_step=self.h_step
+            z_step=x_step=self.r_step
         elif self.direction == "edge":
-            x_step=h_step
-            z_step=y_step=r_step
+            x_step=self.h_step
+            z_step=y_step=self.r_step
         else:
             raise NameError(self.direction)
 
-        xArray = np.arange(x_min+0.5*x_step,x_max-0.49*x_step,x_step)
-        yArray = np.arange(y_min+0.5*y_step,y_max-0.49*y_step,y_step)
-        zArray = np.arange(z_min+0.5*z_step,z_max-0.49*z_step,z_step)
+        self.nx=int(self.lx/x_step)
+        self.ny=int(self.ly/y_step)
+        self.nz=int(self.lz/z_step)
 
-        self.projGrid =np.zeros([len(xArray),len(yArray)])
+        xArray = np.arange(-1.1*self.lx+0.5*x_step,1.1*self.lx-0.49*x_step,x_step)
+        yArray = np.arange(-1.1*self.ly+0.5*y_step,1.1*self.ly-0.49*y_step,y_step)
+        zArray = np.arange(-1.1*self.lz+0.5*z_step,1.1*self.lz-0.49*z_step,z_step)
+
+        self.xArray = xArray
+        self.yArray = yArray
+        self.zArray = zArray
+
+        Y,X,Z=np.meshgrid(yArray,xArray,zArray) #Feature of numpy.meshgrid
         if self.direction in ("top","bottom"):
-            for i in range(len(xArray)):
-                for j in range(len(yArray)):
-                    r2valueArray = ((zArray-self.z_rel*my_d.det_width)**2+(xArray[i]-self.x_rel*my_d.det_width)**2)*1e-12
-                    if self.direction == "top":
-                        h_j=yArray[j]*1e-6
-                    elif self.direction == "bottom":
-                        h_j=(my_d.thin-yArray[j])*1e-6
-                    projArray_z_axis=self.getCarrierDensity(h_j,self.y_rel*my_d.det_thin*1e-6,r2valueArray)
-                    self.projGrid[i][j]=projArray_z_axis.sum()*x_step*y_step*z_step*1e-18
+            r_squared=X**2+Z**2
+            self.projGrid=self.getCarrierDensity(Y,r_squared)*x_step*y_step*z_step*1e-18
         elif self.direction == "edge":
-            for i in range(len(xArray)):
-                for j in range(len(yArray)):
-                    r2valueArray = ((zArray-self.z_rel*my_d.det_width)**2+(yArray[j]-self.y_rel*my_d.det_thin)**2)*1e-12
-                    projArray_z_axis=self.getCarrierDensity(xArray[i]*1e-6,self.x_rel*my_d.det_width*1e-6,r2valueArray)
-                    self.projGrid[i][j]=projArray_z_axis.sum()*x_step*y_step*z_step*1e-18
+            r_squared=Y**2+Z**2
+            self.projGrid=self.getCarrierDensity(X,r_squared)*x_step*y_step*z_step*1e-18
 
-        self.track_position = [ [] for n in range (len (xArray)*len (yArray)) ]
-        self.ionized_pairs = []
-        for i in range(len (xArray)):
-            for j in range(len (yArray)):
-                x_div_point = xArray[i]
-                y_div_point = yArray[j]
-                self.track_position[i*len(yArray)+j].append(x_div_point)
-                self.track_position[i*len(yArray)+j].append(y_div_point)
-                self.ionized_pairs.append(self.projGrid[i][j])
+    def getCarrierDensity(self,h,r2):
+        def getIntensity(h,r2):
+            widthSquared= getWidthSquared(h)
+            if self.tech=="SPA":
+                intensity = ((2*self.power)/(np.pi*widthSquared*1e-12))*np.exp((-2*r2/(widthSquared)))*np.exp(-self.alpha*h*1e-6)
+                return intensity
+            elif self.tech=="TPA":
+                k=(self.power**2)*8*np.log(2)/(self.tau*(np.pi**2.5)*(np.log(4))**0.5)
+                intensity_squared = k*np.exp(-4*r2/widthSquared)/((widthSquared**2)*1e-24)
+                return intensity_squared
 
-    def getCarrierDensity(self,h,h_focus,r2):
-        I = self.getIntensity(h,h_focus,r2)
+        def getWidthSquared(h):#return um^2
+            return (self.widthBeamWaist**2)*(1+(h/self.l_Rayleigh)**2)
+
+        I = getIntensity(h,r2)
         if self.tech=="SPA":
             e0 = 1.60217733e-19
             return self.alpha*I/(3.6*e0)
         elif self.tech=="TPA":
             h_Planck = 6.626*1e-34
             speedofLight = 2.998*1e8
-            return self.beta_2*self.wavelength*I/(2*h_Planck*speedofLight)     
+            return self.beta_2*self.wavelength*1e-6*I/(2*h_Planck*speedofLight)
 
-    def getIntensity(self,h,h_focus,r2):
-        widthSquared= self.getWidthSquared(h-h_focus)
-        if self.tech=="SPA":
-            intensity = ((2*self.power)/(np.pi*widthSquared))*np.exp((-2*(r2)/(widthSquared)))*np.exp(-self.alpha*h)
-            return intensity
-        elif self.tech=="TPA":
-            k=(self.power**2)*8*np.log(2)/(self.tau*(np.pi**2.5)*(np.log(4))**0.5)
-            intensity_squared =k*np.exp(-4*r2/widthSquared)/widthSquared**2
-            return intensity_squared
-
-    def getWidthSquared(self,delta_h):
-        return (self.widthBeamWaist**2)*(1+(delta_h/self.l_Rayleigh)**2)
-    
-    def draw_nocarrier(self,my_d,number=""):
-        c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
-        h = ROOT.TH2D("h","pairs of carrier generation",len(self.projGrid),0,my_d.det_width,len(self.projGrid[0]),0,my_d.det_thin)
-        for i in range(len(self.projGrid)):
-            for j in range(len(self.projGrid[0])):
-                h.Fill(self.track_position[i*len(self.projGrid[0])+j][0], self.track_position[i*len(self.projGrid[0])+j][1], self.projGrid[i][j])
-        h.Draw()
-        c1.SaveAs("nocarrier_"+number+".pdf")  
-
-    def mips_ionized(self):
+    def getTrackProfile2D(self,x_rel,y_rel,z_rel):
+        """
+        Description:
+            Transfer Carrier Distribution from Laser Coordinate System 
+            to 2d Detector Coordinate System
+        Parameters:
+        ---------
+        x_rel,y_rel,z_rel:
+            the Normalized Coordinate for Laser Focus 
+            in Detector Coordinate System
+        @Modify:
+        ---------
+            2021/09/13
+        """
+        self.track_position = []
         self.ionized_pairs = []
-        self.ionized_total_pairs = 0.
-
+        self.ionized_total_pairs = 0
         for i in range(len(self.projGrid)):
-            for j in range(len(self.projGrid[0])):
-                n_pairs = self.projGrid[i][j]
-                self.ionized_pairs.append(n_pairs)
-                self.ionized_total_pairs += n_pairs
+            x_div_point = self.xArray[i]+x_rel*self.lx
+            if not 0 <= x_div_point <= self.lx:
+                continue
+            for j in range(len (self.projGrid[0])):
+                y_div_point = self.yArray[j]+y_rel*self.ly
+                if not 0 <= y_div_point <= self.ly:
+                    continue
+                z_sum = 0
+                for k in range(len (self.projGrid[0][0])):
+                    z_div_point = self.zArray[k]+z_rel*self.lz
+                    if 0 <= z_div_point <= self.lz:
+                        z_sum += self.projGrid[i][j][k]
+                self.track_position.append([x_div_point,y_div_point])
+                self.ionized_pairs.append(z_sum)
+                self.ionized_total_pairs += z_sum
+        print(self.ionized_total_pairs)
+        self.draw_nocarrier(x_rel,y_rel,z_rel)
+
+    def draw_nocarrier(self,x_rel,y_rel,z_rel):
+        c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
+        h = ROOT.TH2D("h","pairs of carrier generation",self.nx,0,self.lx,self.ny,0,self.ly)
+        for i in range(len(self.track_position)):
+            h.Fill(self.track_position[i][0], self.track_position[i][1],self.ionized_pairs[i])
+        h.Draw()
+        c1.SaveAs("nocarrier_"+str(round(x_rel,5))+"_"+str(round(y_rel,5))+"_"+str(round(z_rel,5))+".pdf")  

@@ -615,4 +615,4 @@ class FenicsCal2D:
         g_e.Draw()
         c.Modified()
         c.Update()
-        c.SaveAs("./fig/silicon_lgad_2D_electricfield_150V.pdf")
+        c.SaveAs("./fig/%s_lgad_2D_electricfield_%dV.pdf"%(self.det.mat_name, self.det.bias_voltage))
