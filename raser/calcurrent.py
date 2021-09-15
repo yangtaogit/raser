@@ -751,7 +751,7 @@ class CalCurrent2D:
 
             if(tmp_track_name[-3:]=='p_n'):
                 det.gain_p_n_cu.Add(temp_gain_cu)
-
+# 
             if(tmp_track_name[-3:]=='p_p'):
                 det.gain_p_p_cu.Add(temp_gain_cu)
 
