@@ -95,7 +95,7 @@ class MIPs_TCT:
                 x_div_point = j*(self.zlen/self.i_z)+ (self.zlen/(self.i_z*2))
                 y_div_point = i*(self.rlen/self.i_r)+ (self.rlen/(self.i_r*2))
                 self.track_position[i][j].append(x_div_point)
-                self.track_position[i][i].append(y_div_point)
+                self.track_position[i][j].append(y_div_point)
 
     def nocarrier(self,r):
         z_o = self.z_o
@@ -132,7 +132,8 @@ class MIPs_TCT:
                 carr_den_projArray = carriergeneration.getCarrierDensity(r_valueArray, z_valueArray, z_o*1e-6)
                 # Project sum and take into account integral step
                 projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
-        self.ionized_pairs = projGrid*my_pro.x_step*my_pro.z_step
+        projGrid = projGrid*my_pro.x_step*my_pro.z_step
+        return(projGrid)
 
 
 class SPAGeneration():

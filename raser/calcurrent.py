@@ -939,6 +939,10 @@ class CalCurrent2D_TCT:
             self.delta_y=0 
 
         # cal current step ef & wef
+        if self.delta_x < -1e-07:
+            self.delta_x = 0
+
+        # cal current step ef & wef
         #print(np.linalg.norm(FF))
         print(self.delta_x)
         #print(self.delta_y)
@@ -1044,19 +1048,19 @@ class CalCurrent2D_TCT:
         
     def update_end_condition(self):
 
-        if(self.we_field.all()>(1-1e-5)):
-            self.end_condition=1
+        # if(self.we_field.all()>(1-1e-5)):
+        #     self.end_condition=1
         if(self.track_x<=0):
             self.end_condition=2
         if(self.track_y<=0):
             self.end_condition=3
-        else: 
-            self.end_condition=0
+        # else: 
+        #     self.end_condition=0
             
-        if(self.path_len>self.max_drift_len):
-            self.end_condition=6
-        if(self.n_step>10000):
-            self.end_condition=7
+        # if(self.path_len>self.max_drift_len):
+        #     self.end_condition=6
+        # if(self.n_step>10000):
+        #     self.end_condition=7
         
 
     def cal_current(self):
@@ -1068,7 +1072,7 @@ class CalCurrent2D_TCT:
         #
         # initial carrier track
         #
-        track.nocarrier(self.r)
+        nocarrier = track.nocarrier(self.r)
         self.track_number = 0
         for i in range(len(track.track_position)):
             for m in range(len(track.track_position[i])):
@@ -1079,10 +1083,10 @@ class CalCurrent2D_TCT:
                 for j in range(2):
 
                     if(j==0):
-                        self.charges=1*track.ionized_pairs[m,i] # hole
+                        self.charges=1 # hole
 
                     if(j==1):
-                        self.charges=-1*track.ionized_pairs[m,i] # electron
+                        self.charges=-1 # electron
                 
                     self.track_time = 0.
                     self.track_x = track.track_position[i][m][0]
@@ -1145,7 +1149,7 @@ class CalCurrent2D_TCT:
                         tmp_gain_time = self.delta_track_info_dic_p["tk_"+str(n+1)][0][j]
                         tmp_gain_x = self.delta_track_info_dic_p["tk_"+str(n+1)][1][j]
                         tmp_gain_y = self.delta_track_info_dic_p["tk_"+str(n+1)][2][j]
-                        tmp_gain_pairs = abs(self.delta_track_info_dic_p["tk_"+str(n+1)][3][j]*(np.max(self.delta_track_info_dic_p["tk_"+str(n+1)][5])-1))
+                        tmp_gain_pairs = abs(self.delta_track_info_dic_p["tk_"+str(n+1)][3][j]*(np.max(self.delta_track_info_dic_p["tk_"+str(n+1)][5])-1)*nocarrier[m,i])
                         tmp_gain_current = 0.
 
                         self.gain_track_info_list.append(["tk_"+str(n+1)+"_p_n",tmp_gain_time,tmp_gain_x,tmp_gain_y,-tmp_gain_pairs])
@@ -1164,7 +1168,7 @@ class CalCurrent2D_TCT:
                         tmp_gain_time = self.delta_track_info_dic_n["tk_"+str(n+1)][0][k]
                         tmp_gain_x = self.delta_track_info_dic_n["tk_"+str(n+1)][1][k]
                         tmp_gain_y = self.delta_track_info_dic_n["tk_"+str(n+1)][2][k]
-                        tmp_gain_pairs = abs(self.delta_track_info_dic_n["tk_"+str(n+1)][3][k]*(np.max(self.delta_track_info_dic_n["tk_"+str(n+1)][5])-1))
+                        tmp_gain_pairs = abs(self.delta_track_info_dic_n["tk_"+str(n+1)][3][k]*(np.max(self.delta_track_info_dic_n["tk_"+str(n+1)][5])-1)*nocarrier[m,i])
                         tmp_gain_current = 0.
 
                         self.gain_track_info_list.append(["tk_"+str(n+1)+"_n_n",tmp_gain_time,tmp_gain_x,tmp_gain_y,-tmp_gain_pairs])
@@ -1247,7 +1251,8 @@ class CalCurrent2D_TCT:
 
                 for k in range(len(self.delta_track_info_dic_n["tk_"+str(n+1)][0])):
                     temp_negitive_cu.Fill(self.delta_track_info_dic_n["tk_"+str(n+1)][0][k], self.delta_track_info_dic_n["tk_"+str(n+1)][4][k])
-
+                temp_positive_cu.Scale(nocarrier[m,i])
+                temp_negitive_cu.Scale(nocarrier[m,i])
                 det.positive_cu.Add(temp_positive_cu)
                 det.negtive_cu.Add(temp_negitive_cu)
 
