@@ -242,7 +242,8 @@ class Setting:
             self.g4seed = self.intance_number * self.total_events
             self.output = self._pardic["output"]
         else:
-            self.total_events = 30
+            p = self.paras
+            self.total_events = p['total_events']
             self.g4seed = 0 
 
     def is_number(self,s):
