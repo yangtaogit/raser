@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="raser",
-    version="2.1.1",
+    version="2.2.0",
     author="Xin Shi",
     author_email="xin.shi@outlook.com",
     description="SiC Timing Detector Simulation",
