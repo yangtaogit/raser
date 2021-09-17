@@ -61,7 +61,7 @@ class Particles:
             UImanager = g4b.G4UImanager.GetUIpointer()
             UImanager.ApplyCommand('/run/initialize')
             
-        gRunManager.BeamOn(dset.total_events)
+        gRunManager.BeamOn(int(dset.total_events))
         if g4_dic['g4_vis']:  
             ui.SessionStart()
         self.p_steps=s_p_steps

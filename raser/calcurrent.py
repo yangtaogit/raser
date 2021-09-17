@@ -53,7 +53,7 @@ class CalCurrent:
         """     
         if batch == 0:
             for j in range(len(my_g4p.p_steps)):
-                if my_g4p.edep_devices[j]>0.2 and batch == 0:
+                if len(my_g4p.p_steps[j])>10 and batch == 0:
                     self.beam_number = j
                     self.tracks_p = my_g4p.p_steps[j]
                     self.tracks_step_edep = my_g4p.energy_steps[j]
@@ -321,7 +321,7 @@ class CalCurrent:
     def reset_start(self,my_d):
         """ Reset th1f """
         my_d.positive_cu.Reset()
-        my_d.negtive_cu.Reset()
+        my_d.negative_cu.Reset()
         my_d.sum_cu.Reset()
         self.sum_p_current = []
 

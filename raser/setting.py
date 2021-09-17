@@ -312,7 +312,7 @@ class Setting:
             self.output = self._pardic["output"]
         else:
             p = self.paras
-            self.total_events = p['total_events']
+            self.total_events = int(p['total_events'])
             self.g4seed = 0 
 
     def is_number(self,s):
