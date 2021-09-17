@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="raser",
-    version="2.1.0",
+    version="2.1.1",
     author="Xin Shi",
     author_email="xin.shi@outlook.com",
     description="Simulate timing resolution, TCT, TPA-TCT of 2D&3D Si&SiC detector",
