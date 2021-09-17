@@ -30,7 +30,7 @@ class Particles:
             2021/09/02
         """	
         g4_dic = dset.pygeant4
-        my_g4d = MyDetectorConstruction(my_d,my_f,g4_dic['name'],maxStep=0.5)		
+        my_g4d = MyDetectorConstruction(my_d,my_f,g4_dic['name'],g4_dic['maxstep'])		
         if g4_dic['g4_vis']: 
             ui = None
             ui = g4b.G4UIExecutive(len(sys.argv), sys.argv)
@@ -61,7 +61,7 @@ class Particles:
             UImanager = g4b.G4UImanager.GetUIpointer()
             UImanager.ApplyCommand('/run/initialize')
             
-        gRunManager.BeamOn(dset.total_events)
+        gRunManager.BeamOn(int(dset.total_events))
         if g4_dic['g4_vis']:  
             ui.SessionStart()
         self.p_steps=s_p_steps
@@ -75,7 +75,7 @@ class Particles:
 #Geant4 for particle drift path
 class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):                
     "My Detector Construction"
-    def __init__(self,my_d,my_f,sensor_model,maxStep):
+    def __init__(self,my_d,my_f,sensor_model,maxStep=0.5):
         g4b.G4VUserDetectorConstruction.__init__(self)
         self.solid = {}
         self.logical = {}
@@ -179,7 +179,6 @@ class MyDetectorConstruction(g4b.G4VUserDetectorConstruction):
                                 material_c = "C",
                                 colour = [0,1,1],
                                 mother = 'world')
-
         self.maxStep = maxStep*g4b.um
         self.fStepLimit = g4b.G4UserLimits(self.maxStep)
         self.logical["Device"].SetUserLimits(self.fStepLimit)
@@ -348,13 +347,13 @@ class MyRunAction(g4b.G4UserRunAction):
         self.edep_devices=[]
         self.p_steps=[]
         self.energy_steps=[]  
+        
     def EndOfRunAction(self, run):
         nofEvents = run.GetNumberOfEvent()
-        # print(len((self.p_steps)))    
-        # print(self.p_steps)
         if nofEvents == 0:
             print("nofEvents=0")
             return
+
     def Record_events(self,eventID,edep_device,p_step,energy_step):
         if(len(p_step)>0):
             self.eventIDs.append(eventID)
@@ -392,7 +391,6 @@ class MyEventAction(g4b.G4UserEventAction):
         self.x_EdepC_device += edep*(point_out.getX()+point_in.getX())*0.5
         self.y_EdepC_device += edep*(point_out.getY()+point_in.getY())*0.5
         self.z_EdepC_device += edep*(point_out.getZ()+point_in.getZ())*0.5
-        #print(point_in.getX()*1000,point_in.getY()*1000,point_in.getZ()*1000)
         self.p_step.append([point_in.getX()*1000,
                            point_in.getY()*1000,point_in.getZ()*1000])
         self.energy_step.append(edep) 

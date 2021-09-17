@@ -17,22 +17,43 @@ from raser.model import Avalanche
 
 #The drift of generated particles
 class CalCurrent:
-    def __init__(self, my_d, my_f, my_g4p, dset):
+    def __init__(self, my_d, my_f, my_g4p, dset, batch=0):
         #mobility related with the magnetic field (now silicon useless)
         self.muhh=1650.0   
         self.muhe=310.0
         self.BB=np.array([0,0,0])
         self.sstep=dset.steplength #drift step
+        print(self.sstep)
         self.kboltz=8.617385e-5 #eV/K
         self.max_drift_len=1e9 #maximum diftlenght [um]
-        self.drift(my_d, my_f, my_g4p)
+        self.parameters(my_g4p, my_d, batch)
+        self.ionized_drift(my_g4p,my_f,my_d)
             
-    def drift(self, my_d, my_f, my_g4p, batch=0):    
+    def parameters(self,my_g4p, my_d, batch): 
+        """" Define the output dictionary """   
         self.d_dic_n = {}
         self.d_dic_p = {}
+        self.events_position(my_g4p, batch) 
+        for n in range(len(self.tracks_p)-1):
+            self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
+            self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ]
+           
+    def events_position(self,my_g4p, batch):
+        """
+        Description:
+            Events position and energy depositon
+        Parameters:
+        ---------
+        batch : int
+            batch = 0: Single event, choose hit electron
+            batch != 0: Multi event, batch is the number of electron     
+        @Modify:
+        ---------
+            2021/09/13
+        """     
         if batch == 0:
             for j in range(len(my_g4p.p_steps)):
-                if my_g4p.edep_devices[j]>0.2 and batch == 0:
+                if len(my_g4p.p_steps[j])>10 and batch == 0:
                     self.beam_number = j
                     self.tracks_p = my_g4p.p_steps[j]
                     self.tracks_step_edep = my_g4p.energy_steps[j]
@@ -47,76 +68,92 @@ class CalCurrent:
             self.tracks_p = my_g4p.p_steps[batch]
             self.tracks_step_edep = my_g4p.energy_steps[batch]
             self.tracks_t_edep = my_g4p.edep_devices[batch]
-        for n in range(len(self.tracks_p)-1):
-            self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(5) ]
-            self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(5) ]    
-        self.ionized_drift(my_g4p,my_f,my_d)
-        
-    def ionized_drift(self,my_g4p,my_f,my_d):
 
+    def ionized_drift(self,my_g4p,my_f,my_d):
+        """
+        Description:
+            The drift simulation of all tracks
+            One track is corresponding to one electron-hole pair 
+        """
         for i in range(len(self.tracks_p)-1):
             self.n_track=i+1
             for j in range(2):
                 if (j==0):
                     self.charg=1 #hole
                 if (j==1):
-                    self.charg=-1 #electron                
-                self.initial_parameter()
-                #generated particles positions
-                self.d_x=self.tracks_p[i+1][0]#initial position
-                self.d_y=self.tracks_p[i+1][1]
-                # the z position need to minus the position from geant4
-                self.d_z=self.tracks_p[i+1][2] - my_g4p.init_tz_device 
-                while (self.end_cond==0):
-                    # electic field of the position
-                    self.e_field = my_f.get_e_field(self.d_x,
-                                                    self.d_y,
-                                                    self.d_z)
-                    # modify this part										
-                    if (self.d_y>=(my_d.l_y-1.0) or self.d_x>=(my_d.l_x-1.0) or self.d_z>=(my_d.l_z-1.0)):
-                        self.end_cond=3  
-                    elif (self.d_y<=(1.0) or self.d_x<=(1.0) or self.d_z<=(1.0)):
-                        self.end_cond=8                    
-                    elif (self.e_field[0]==0 and self.e_field[1]==0 and self.e_field[1]==0):
-                        self.end_cond=9
-                    else:                                                                      
-                        self.delta_p() #delta_poisiton                  
-                        self.drift_v(my_d,my_f) #drift_position                    
-                        self.drift_s_step(my_d) #drift_next_posiiton
-                        #charge_collection
-                        self.wpot = my_f.get_w_p(self.d_cx,self.d_cy,self.d_cz)
-                        delta_Uw = (self.wpot 
-                                   - my_f.get_w_p(self.d_x,self.d_y,self.d_z))
-                        self.charge=self.charg*delta_Uw
-                        if(self.v_drift!=0):
-                            self.d_time=self.d_time+self.sstep*1e-4/self.v_drift
-                            self.path_len+=self.sstep
-                        self.d_x=self.d_cx
-                        self.d_y=self.d_cy
-                        self.d_z=self.d_cz
-                        
-                        self.save_inf_track(my_d)  
-                        self.drift_end_condition()
-                    self.n_step+=1 
-        self.get_current(my_d,my_g4p)
-        
+                    self.charg=-1 #electron 
+                self.loop_electon_hole(my_g4p,my_f,my_d,i)
+        self.get_current(my_d)
 
+    def energy_deposition(self,my_d,j):
+        """" Deposition energy and generate e-h pair """
+        sic_loss_e=self.meter_choose(my_d)
+        n_pairs=self.tracks_step_edep[j]*1e6/sic_loss_e
+        return n_pairs 
+
+    def loop_electon_hole(self,my_g4p,my_f,my_d,i):
+        """
+        Description:
+            Loop and record the induced cuurent of each eletron or holes         
+        Parameters:
+        ---------
+        arg1 : int
+            
+        @Modify:
+        ---------
+            2021/09/13
+        """
+        self.initial_parameter()
+        self.d_x=self.tracks_p[i+1][0]
+        self.d_y=self.tracks_p[i+1][1]
+        self.d_z=self.tracks_p[i+1][2] - my_g4p.init_tz_device 
+        while (self.end_cond == 0):
+            if self.judge_whether_insensor(my_d,my_f):               
+                pass
+            else:                                                                     
+                self.delta_p() #delta_poisiton               
+                self.drift_v(my_d,my_f) #drift_position                   
+                self.drift_s_step(my_d) #drift_next_posiiton
+                self.charge_collection(my_f)             
+                self.save_inf_track(my_d) 
+                self.drift_end_condition()
+            self.n_step+=1 
+        
+        
     def initial_parameter(self):
+        """ initial the parameter in the drift """
         self.end_cond=0
         self.d_time=1.0e-9
         self.path_len=0
         self.n_step=0
         self.charge=0
 
+    def judge_whether_insensor(self,my_d,my_f):
+        """
+        Judge the whether the point(x,y,z) is in the sensor
+        and whether the electric field is zero
+        """
+        # electic field of the position
+        self.e_field = my_f.get_e_field(self.d_x,
+                                        self.d_y,
+                                        self.d_z)
+        # modify this part										
+        if (self.d_y>=(my_d.l_y-1.0) or self.d_x>=(my_d.l_x-1.0) or self.d_z>=(my_d.l_z-1.0)):
+            self.end_cond=3  
+        elif (self.d_y<=(1.0) or self.d_x<=(1.0) or self.d_z<=(1.0)):
+            self.end_cond=8                    
+        elif (self.e_field[0]==0 and self.e_field[1]==0 and self.e_field[1]==0):
+            self.end_cond=9
+        return self.end_cond
+
     def delta_p(self):
-        # magnetic field effect
+        """ sstep(1um) split to three position """
         if(self.charg)>0:
             FF=self.list_add(self.e_field,
                              self.cross(self.e_field,self.BB,self.muhh))
         else:
             FF=self.list_sub(self.e_field,
-                             self.cross(self.e_field,self.BB,self.muhe))
-        
+                             self.cross(self.e_field,self.BB,self.muhe))   
         total_ef = self.root_mean_square(FF)
         if(total_ef!=0):
             self.delta_x=-self.sstep*self.charg*FF[0]/total_ef
@@ -175,14 +212,18 @@ class CalCurrent:
                                     *my_d.temperature*self.s_time)
                 self.dif_x=random.gauss(0.0,s_sigma)*1e4
                 self.dif_y=random.gauss(0.0,s_sigma)*1e4
-                self.dif_z=random.gauss(0.0,s_sigma)*1e4
-                       
+                self.dif_z=random.gauss(0.0,s_sigma)*1e4                       
             else:
                 print("the eletric field is too big, \
                        the multiplication appear. The system shold end. ")
                 sys.exit(0)
 
     def drift_s_step(self,my_d):
+        """" Drift distance
+        d_x: raw position
+        delta_x: eletric field
+        dif_x thermal diffusion
+        """
         # x axis   
         if((self.d_x+self.delta_x+self.dif_x)>=my_d.l_x): 
             self.d_cx = my_d.l_x
@@ -205,7 +246,21 @@ class CalCurrent:
         else:
             self.d_cz = self.d_z+self.delta_z+self.dif_z
 
-    def drift_end_condition(self):    
+    def charge_collection(self,my_f):
+        """ Calculate charge collection """ 
+        self.wpot = my_f.get_w_p(self.d_cx,self.d_cy,self.d_cz)
+        delta_Uw = (self.wpot 
+                    - my_f.get_w_p(self.d_x,self.d_y,self.d_z))
+        self.charge=self.charg*delta_Uw
+        if(self.v_drift!=0):
+            self.d_time=self.d_time+self.sstep*1e-4/self.v_drift
+            self.path_len+=self.sstep
+        self.d_x=self.d_cx
+        self.d_y=self.d_cy
+        self.d_z=self.d_cz
+
+    def drift_end_condition(self): 
+        """ Judge whether the drift loop should end """
         if(self.wpot>(1-1e-5)):
             self.end_cond=1
         if(self.d_x<=0):
@@ -220,8 +275,8 @@ class CalCurrent:
             self.end_cond=7
 
     def save_inf_track(self,my_d):
-        e0 = 1.60217733e-19
-        if(((self.charge<0 and my_d.v_voltage<0) 
+        """ Save the information in the dictionary """
+        if(((self.charge<0 and my_d.v_voltage<0)  
              or (self.charge>0 and my_d.v_voltage>0))): 
             if(self.charg>0):
                 self.d_dic_p["tk_"+str(self.n_track)][0].append(self.d_x)
@@ -236,29 +291,15 @@ class CalCurrent:
                 self.d_dic_n["tk_"+str(self.n_track)][3].append(self.charge)
                 self.d_dic_n["tk_"+str(self.n_track)][4].append(self.d_time)
 
-    def get_current(self,my_d,my_g4p):
-        my_d.positive_cu.Reset()
-        my_d.negative_cu.Reset()
-        my_d.sum_cu.Reset()
-        self.sum_p_current = []
+    def get_current(self,my_d):
+        """ Charge distribution to total current"""
+        self.reset_start(my_d)
         test_p = ROOT.TH1F("test+","test+",my_d.n_bin,my_d.t_start,my_d.t_end)
         test_n = ROOT.TH1F("test-","test-",my_d.n_bin,my_d.t_start,my_d.t_end)
-        test_sum = ROOT.TH1F("test sum","test sum",
-                             my_d.n_bin,my_d.t_start,my_d.t_end)
         total_pairs=0
-        if (my_d.mater == 1): # silicon carbide
-            sic_loss_e = 8.4 #ev
-        elif (my_d.mater == 0):   # silicon
-            sic_loss_e = 3.6 #ev
-        for j in range(len(self.tracks_p)-1):
-            for i in range(len(self.d_dic_p["tk_"+str(j+1)][2])):
-                test_p.Fill(self.d_dic_p["tk_"+str(j+1)][4][i],
-                            self.d_dic_p["tk_"+str(j+1)][3][i])
-            test_p = self.get_current_his(test_p)           
-            for i in range(len(self.d_dic_n["tk_"+str(j+1)][2])):
-                test_n.Fill(self.d_dic_n["tk_"+str(j+1)][4][i],
-                            self.d_dic_n["tk_"+str(j+1)][3][i])
-            test_n = self.get_current_his(test_n)
+        sic_loss_e=self.meter_choose(my_d)
+        for j in range(len(self.tracks_p)-2):
+            test_p,test_n = self.get_trackspn(my_d, test_p, test_n, j)   
             n_pairs=self.tracks_step_edep[j]*1e6/sic_loss_e
             total_pairs+=n_pairs
             test_p.Scale(n_pairs)
@@ -268,6 +309,7 @@ class CalCurrent:
             test_p.Reset()
             test_n.Reset()
         self.laudau_t_pairs = self.tracks_t_edep*1e6/sic_loss_e
+        print("laudau_t_pairs=%s"%self.laudau_t_pairs)
         if total_pairs != 0:
             n_scale = self.laudau_t_pairs/total_pairs
         else:
@@ -276,18 +318,38 @@ class CalCurrent:
         my_d.sum_cu.Add(my_d.negative_cu)
         my_d.sum_cu.Scale(n_scale)
 
-    def get_current_his(self,histo):
+    def reset_start(self,my_d):
+        """ Reset th1f """
+        my_d.positive_cu.Reset()
+        my_d.negative_cu.Reset()
+        my_d.sum_cu.Reset()
+        self.sum_p_current = []
+
+    def meter_choose(self,my_d):
+        """ Judge the material of sensor """
+        if (my_d.mater == 1): # silicon carbide
+            sic_loss_e = 8.4 #ev
+        elif (my_d.mater == 0):   # silicon
+            sic_loss_e = 3.6 #ev
+        return sic_loss_e
+
+    def get_trackspn(self, my_d, test_p, test_n, j):
+        """ Total current of each e-h pair"""
         e0 = 1.60217733e-19
-        hist = ROOT.TH1F()
-        histo.Copy(hist)
-        for i in range(hist.GetNbinsX()):
-            histo.SetBinContent(i, hist.GetBinContent(i) \
-                /((hist.GetXaxis().GetXmax() - hist.GetXaxis().GetXmin()) \
-                / hist.GetNbinsX())*e0)
-        return histo
+        for i in range(len(self.d_dic_p["tk_"+str(j+1)][2])):
+            test_p.Fill(self.d_dic_p["tk_"+str(j+1)][4][i],
+                        self.d_dic_p["tk_"+str(j+1)][3][i]/my_d.t_bin*e0)   
+        for i in range(len(self.d_dic_n["tk_"+str(j+1)][2])):
+            test_n.Fill(self.d_dic_n["tk_"+str(j+1)][4][i],
+                        self.d_dic_n["tk_"+str(j+1)][3][i]/my_d.t_bin*e0)
+        return test_p, test_n
         
 # # # mobility model
 def sic_mobility(charge,aver_e,my_d):
+    """ SiC mobility model 
+    SiC reference: TCAD SIMULATION FOR ALPHA-PARTICLE SPECTROSCOPY USING SIC SCHOTTKY DIODE
+    Si  reference: Signal development in irradiated silicon detectors
+    """
     T=my_d.temperature
     E=aver_e
     Neff=abs(my_d.d_neff)
