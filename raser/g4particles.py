@@ -10,6 +10,7 @@ Description:
 
 import geant4_pybind as g4b
 import sys
+import numpy as np
 
 # Geant4 main process
 class Particles:
@@ -45,8 +46,8 @@ class Particles:
         physics_list.RegisterPhysics(g4b.G4StepLimiterPhysics())
         gRunManager.SetUserInitialization(physics_list)
         # define golbal parameter
-        global s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps
-        s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps=[],[],[],[]
+        global s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps,s_events_angle
+        s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps,s_events_angle=[],[],[],[],[]
 
         #define action
         gRunManager.SetUserInitialization(MyActionInitialization(
@@ -67,7 +68,9 @@ class Particles:
         self.p_steps=s_p_steps
         self.energy_steps=s_energy_steps
         self.edep_devices=s_edep_devices
+        self.events_angle=s_events_angle
         self.init_tz_device = my_g4d.init_tz_device
+        del s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps,s_events_angle
         
     def __del__(self):
         pass
@@ -343,70 +346,74 @@ class MyRunAction(g4b.G4UserRunAction):
       
     def BeginOfRunAction(self, run):
         g4b.G4RunManager.GetRunManager().SetRandomNumberStore(False)
-        self.eventIDs=[]
-        self.edep_devices=[]
-        self.p_steps=[]
-        self.energy_steps=[]  
-        
+   
     def EndOfRunAction(self, run):
         nofEvents = run.GetNumberOfEvent()
         if nofEvents == 0:
             print("nofEvents=0")
             return
 
-    def Record_events(self,eventID,edep_device,p_step,energy_step):
-        if(len(p_step)>0):
-            self.eventIDs.append(eventID)
-            self.edep_devices.append(edep_device)
-            self.p_steps.append(p_step)
-            self.energy_steps.append(energy_step)
-        else:
-            self.edep_devices.append(edep_device)
-            self.p_steps.append([0,0,0])
-            self.energy_steps.append([0])
-
-
 class MyEventAction(g4b.G4UserEventAction):
     "My Event Action"
-    def __init__(self, runAction):
+    def __init__(self, runAction, point_in, point_out):
         g4b.G4UserEventAction.__init__(self)
         self.fRunAction = runAction
+        self.point_in = point_in
+        self.point_out = point_out
 
     def BeginOfEventAction(self, event):
         self.edep_device=0.
-        self.x_EdepC_device=0.
-        self.y_EdepC_device=0.
-        self.z_EdepC_device=0.
+        self.event_angle = 0.
         self.p_step = []
         self.energy_step = []
+        
 
     def EndOfEventAction(self, event):
         eventID = event.GetEventID()
         print("eventID:%s"%eventID)
+        if len(self.p_step):
+            point_a = [ b-a for a,b in zip(self.point_in,self.point_out)]
+            point_b = [ c-a for a,c in zip(self.point_in,self.p_step[-1])]
+            self.event_angle = cal_angle(point_a,point_b)
+        else:
+            self.event_angle = None
         save_geant4_events(eventID,self.edep_device,
-                           self.p_step,self.energy_step)
+                           self.p_step,self.energy_step,self.event_angle)
 
     def RecordDevice(self, edep,point_in,point_out):
         self.edep_device += edep
-        self.x_EdepC_device += edep*(point_out.getX()+point_in.getX())*0.5
-        self.y_EdepC_device += edep*(point_out.getY()+point_in.getY())*0.5
-        self.z_EdepC_device += edep*(point_out.getZ()+point_in.getZ())*0.5
         self.p_step.append([point_in.getX()*1000,
                            point_in.getY()*1000,point_in.getZ()*1000])
-        self.energy_step.append(edep) 
+        self.energy_step.append(edep)
+     
 
-def save_geant4_events(eventID,edep_device,p_step,energy_step):
+def save_geant4_events(eventID,edep_device,p_step,energy_step,event_angle):
     if(len(p_step)>0):
         s_eventIDs.append(eventID)
         s_edep_devices.append(edep_device)
         s_p_steps.append(p_step)
         s_energy_steps.append(energy_step)
+        s_events_angle.append(event_angle)
     else:
         s_eventIDs.append(eventID)
         s_edep_devices.append(edep_device)
         s_p_steps.append([[0,0,0]])
         s_energy_steps.append([0])
+        s_events_angle.append(event_angle)
 
+def cal_angle(point_a,point_b):
+    "Calculate the anlgle of point a and b"
+    x=np.array(point_a)
+    y=np.array(point_b)
+    l_x=np.sqrt(x.dot(x))
+    l_y=np.sqrt(y.dot(y))
+    dian=x.dot(y)
+    if l_x*l_y > 0:
+        cos_=dian/(l_x*l_y)
+        angle_d=np.arccos(cos_)*180/np.pi
+    else:
+        angle_d=9999
+    return angle_d
 
 
 class MySteppingAction(g4b.G4UserSteppingAction):
@@ -439,7 +446,7 @@ class MyActionInitialization(g4b.G4VUserActionInitialization):
         # global myRA_action
         myRA_action = MyRunAction()
         self.SetUserAction(myRA_action)
-        myEA = MyEventAction(myRA_action)
+        myEA = MyEventAction(myRA_action,self.par_in,self.par_out)
         self.SetUserAction(myEA)
         self.SetUserAction(MySteppingAction(myEA))
 
