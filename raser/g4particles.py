@@ -70,6 +70,7 @@ class Particles:
         self.edep_devices=s_edep_devices
         self.events_angle=s_events_angle
         self.init_tz_device = my_g4d.init_tz_device
+        del s_eventIDs,s_edep_devices,s_p_steps,s_energy_steps,s_events_angle
         
     def __del__(self):
         pass
