@@ -38,7 +38,8 @@ class Setting:
         if "laser_model" in self._pardic:
             self.laser_model=self._pardic['laser_model']
             self.append_par(self._pardic['laser_file'])
-        self.scan_variation()
+        if self.det_model in ("plugin3D","planar3D"):
+            self.scan_variation()
 
     def input2dic(self,parameters):
         " Transfer input list to dictinary"
@@ -123,6 +124,16 @@ class Setting:
                         'bias_voltage':p['bias_voltage'],
                         'temperature':p['temperature']
                         }
+
+        if "pin2D" in self.det_model:
+            detector = {'name':'pin2D',
+                        'det_width':p['det_width'], 'det_thin':p['det_thin'],
+                        'x_step':p['x_step'], 'y_step':p['y_step'],
+                        'material':p['material'],
+                        'doping_epr':p['doping_epr'],
+                        'bias_voltage':p['bias_voltage'],
+                        'temperature':p['temperature']
+                        }
         return detector
 
     @property
@@ -168,8 +179,8 @@ class Setting:
         par_out : list
             Theoretical position of outgoing particles
         g4_vis : bool
-            False: Do not display graphical interface of geant4 partivles
-            True: Do not display graphical interface of geant4 partivles
+            False: Graphical interface of geant4 particles Disabled
+            True: Graphical interface of geant4 particles Enabled
         @Returns:
         ---------
             A dictionary containing all parameters used in geant4  
@@ -262,10 +273,14 @@ class Setting:
         p = self.paras
         if hasattr(self,"laser_model"):
             laser = {'tech':p['laser_model'],'direction':p['direction'],
-                    'alpha':p['alpha'],'beta_2':p['beta_2'],'refractionIndex':p['refractionIndex'],
+                    'refractionIndex':p['refractionIndex'],
                     "wavelength":p["wavelength"],"tau":p["tau"],"power":p["power"],"widthBeamWaist":p["widthBeamWaist"],
                     'r_step':p['r_step'],'h_step':p['h_step']
                     }
+            if self.laser_model == "SPA":
+                laser.update({'alpha':p['alpha']})
+            if self.laser_model == "TPA":
+                laser.update({'beta_2':p['beta_2']})
             if 'l_Rayleigh' in p:
                 laser.update({'l_Rayleigh':p['l_Rayleigh']})
         return laser
