@@ -589,7 +589,7 @@ class FenicsCal2D:
         g_e.SetLineColor(600)
         g_e.SetLineWidth(4)
         g_e.SetTitle( 'Electric Field at Cut Line' )
-        g_e.GetXaxis().SetTitle( 'Dpeth [um]' )
+        g_e.GetXaxis().SetTitle( 'Depth [um]' )
         g_e.GetXaxis().SetRangeUser(0,self.det.det_thin)
         g_e.GetYaxis().SetTitle( 'E [V/um]' )
 
@@ -615,4 +615,4 @@ class FenicsCal2D:
         g_e.Draw()
         c.Modified()
         c.Update()
-        c.SaveAs("./fig/%s_lgad_2D_electricfield_%dV.pdf"%(self.det.mat_name, self.det.bias_voltage))
+        c.SaveAs("./fig/%s_%s_electricfield_%dV.pdf"%(self.det.mat_name,self.det.det_model,self.det.bias_voltage))
