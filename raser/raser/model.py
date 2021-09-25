@@ -24,7 +24,7 @@ class Material:
                             }
 
         self.sic_par_dict = {'Permittivity' : 9.76,\
-                             'Avalanche': 'unknown',\
+                             'Avalanche': 'Hatakeyama',\
                              'Mobility' : 'unknown'\
                             }
 
@@ -164,5 +164,69 @@ class Avalanche:
                     coefficient = Ggamma*a_low*math.exp(-(Ggamma*b_low)/E)
             else:
                 coefficient = 0.
+
+    
+
+        if(self.model_name == 'Okuto'):
+
+            T0 = 300.0 # K
+            _gamma = 1.0 # 1
+            _delta = 2.0 # 1
+
+            # electron
+            if( charges < 0):
+                a = 0.426 # V-1
+                b = 4.81e5 # V/cm
+                c = 3.05e-4 # K-1
+                d = 6.86e-4 # K-1
+
+                _lambda = 62.0e-8
+                _beta = 0.265283
+
+            # hole
+            if( charges < 0):
+                a = 0.243 # V-1
+                b = 6.53e5 # V/cm
+                c = 5.35e-4 # K-1
+                d = 5.67e-4 # K-1
+
+                _lambda = 45.0e-8 # cm
+                _beta = 0.261395 # 1
+            
+            if(E>1.0e05):
+                coefficient = a*(1+c*(T-T0))*pow(E,_gamma)*math.exp(-(b*(1+d*(T-T0)))/E)
+            else:
+                coefficient = 0.
+
+
+        if(self.model_name == 'Hatakeyama'):
+            '''
+            The Hatakeyama avalanche model describes the anisotropic behavior in 4H-SiC power devices. The impact ionization coefficient is obtained according to the Chynoweth law.
+            '''
+            hbarOmega = 0.19 # eV
+            _theta =1 # 1
+            T0 = 300.0 # K
+            k_T0 = 0.0257 # eV
+
+            if( charges < 0):
+                a_0001 = 1.76e8 # cm-1
+                a_1120 = 2.10e7 # cm-1
+                b_0001 = 3.30e7 # V/cm 
+                b_1120 = 1.70e7 # V/cm
+                 
+            if (charges > 0):
+                a_0001 = 3.41e8 # cm-1
+                a_1120 = 2.96e7 # cm-1
+                b_0001 = 2.50e7 # V/cm 
+                b_1120 = 1.60e7 # V/cm 
+
+            _gamma = math.tanh(hbarOmega/(2*k_T0))/math.tanh(hbarOmega/(2*k_T0*T/T0))
+
+            # only consider the <0001> direction multiplication, no anisotropy now!
+            a = a_0001
+            b = b_0001
+
+            coefficient = _gamma*a*math.exp(-(_gamma*b/E))
+
 
         return coefficient
