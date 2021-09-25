@@ -483,8 +483,8 @@ class CalCurrent2D:
         # the delta x with electric field and magnetic field for unit e or h
 
         if(np.linalg.norm(FF)!=0):
-            self.delta_x = self.sstep*(self.charges/abs(self.charges))*FF[0]/np.linalg.norm(FF)
-            self.delta_y = self.sstep*(self.charges/abs(self.charges))*FF[1]/np.linalg.norm(FF)
+            self.delta_x = self.sstep*self.charge*FF[0]/np.linalg.norm(FF)
+            self.delta_y = self.sstep*self.charge*FF[1]/np.linalg.norm(FF)
         else:
             self.delta_x=0
             self.delta_y=0 
@@ -505,7 +505,7 @@ class CalCurrent2D:
 
         pos = [self.track_x+self.delta_x, self.track_y+self.delta_y]
 
-        self.drift_velocity = my_mobility.cal_mobility(det, pos, self.charges, ef_value)*ef_value
+        self.drift_velocity = my_mobility.cal_mobility(det, pos, self.charge, ef_value)*ef_value
         # print(self.drift_velocity)
 
         self.e_field = ef
@@ -528,7 +528,7 @@ class CalCurrent2D:
                 
             if(ef_value<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.drift_velocity
-                s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charges, ef_value)*det.temperature*self.s_time)
+                s_sigma= math.sqrt(2*self.kboltz*my_mobility.cal_mobility(det, pos, self.charge, ef_value)*det.temperature*self.s_time)
                 self.dif_x=random.gauss(0,s_sigma)*1e4
                 self.dif_y=random.gauss(0,s_sigma)*1e4
 
@@ -627,9 +627,11 @@ class CalCurrent2D:
             for j in range(2):
 
                 if(j==0):
+                    self.charge = 1
                     self.charges=1*track.ionized_pairs[i] # hole
 
                 if(j==1):
+                    self.charge = -1
                     self.charges=-1*track.ionized_pairs[i] # electron
                 
                 self.track_time = 0.

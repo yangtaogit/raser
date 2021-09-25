@@ -71,7 +71,7 @@ class MIPs:
 
         return Lan_pairs
 
-class TPATracks():
+class TCTTracks():
     """
     Description:
         Transfer Carrier Distribution from Laser Coordinate System 
