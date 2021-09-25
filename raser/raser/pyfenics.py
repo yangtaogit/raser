@@ -499,12 +499,6 @@ class FenicsCal2D:
         y_step = thin/ny
 
         #Interpolation method 
-        # print(px_point)
-        # print(py_point)
-        px_point =np.nan_to_num(px_point, copy=True, nan=0.0)
-        py_point =np.nan_to_num(py_point, copy=True, nan=0.0)
-        # print(px_point)
-        # print(py_point)
         rex_value=px_point%x_step
         nx_value=int(px_point/x_step)
         rey_value=py_point%y_step
