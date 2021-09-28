@@ -173,7 +173,7 @@ class TCTTracks():
         elif isinstance(my_d,R3dDetector):
             pass
 
-        self.draw_nocarrier(x_rel,y_rel,z_rel,min_carrier)
+        self.draw_nocarrier2D(x_rel,y_rel,z_rel,min_carrier)
 
     def getCarrierDensity(self,h,r2):
         widthSquared=(self.widthBeamWaist**2)*(1+(h/self.l_Rayleigh)**2)
@@ -190,11 +190,11 @@ class TCTTracks():
             speedofLight = 2.998*1e8
             return self.beta_2*self.wavelength*1e-6*intensity_squared/(2*h_Planck*speedofLight)
 
-    def draw_nocarrier(self,x_rel,y_rel,z_rel,min_carrier):
+    def draw_nocarrier2D(self,x_rel,y_rel,z_rel,min_carrier):
         c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
         h = ROOT.TH2D("h","pairs of carrier generation",\
-            int((self.x_max-self.x_min)/self.x_step),self.x_min-0.5*self.x_step,self.x_max+0.5*self.x_step,\
-            int((self.y_max-self.y_min)/self.y_step),self.y_min-0.5*self.y_step,self.y_max+0.5*self.y_step)
+            int((self.x_max-self.x_min)/self.x_step)+1,self.x_min-0.5*self.x_step,self.x_max+0.5*self.x_step,\
+            int((self.y_max-self.y_min)/self.y_step)+1,self.y_min-0.5*self.y_step,self.y_max+0.5*self.y_step)
         for i in range(len(self.track_position)):
             h.Fill(self.track_position[i][0], self.track_position[i][1],self.ionized_pairs[i])
         h.Draw()
