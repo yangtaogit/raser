@@ -399,7 +399,7 @@ def sic_mobility(charge,aver_e,my_d):
 
 class CalCurrent2D:
 
-    def __init__(self,track,fen,det,model="lgad"):
+    def __init__(self,track,fen,det,model="lgad2D"):
 
         self.track = track
         self.fen = fen
@@ -693,11 +693,11 @@ class CalCurrent2D:
 
             for j in range(len(self.delta_track_info_dic_p["tk_"+str(i+1)][0])):
                 temp_positive_cu.Fill(self.delta_track_info_dic_p["tk_"+str(i+1)][0][j], self.delta_track_info_dic_p["tk_"+str(i+1)][4][j])
-                temp_positive_cu.Scale(track.ionized_pairs[i])
+            temp_positive_cu.Scale(track.ionized_pairs[i])
 
             for k in range(len(self.delta_track_info_dic_n["tk_"+str(i+1)][0])):
                 temp_negative_cu.Fill(self.delta_track_info_dic_n["tk_"+str(i+1)][0][k], self.delta_track_info_dic_n["tk_"+str(i+1)][4][k])
-                temp_negative_cu.Scale(track.ionized_pairs[i])
+            temp_negative_cu.Scale(track.ionized_pairs[i])
 
             det.positive_cu.Add(temp_positive_cu)
             det.negative_cu.Add(temp_negative_cu)
@@ -827,7 +827,7 @@ class CalCurrent2D:
                 for j in range(len(self.delta_gain_track_info_dic[tmp_track_name][0])):
                     
                     temp_gain_cu.Fill(self.delta_gain_track_info_dic[tmp_track_name][0][j],self.delta_gain_track_info_dic[tmp_track_name][4][j])
-                    temp_gain_cu.Scale(gain_track_info_list[i][5])
+                temp_gain_cu.Scale(self.gain_track_info_list[i][5])
 
                 if(tmp_track_name[-1]=='p'):
                     det.gain_positive_cu.Add(temp_gain_cu)
