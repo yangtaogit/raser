@@ -8,7 +8,7 @@ class MIPs:
 
     # MIPs particle
     def __init__(self):
-        
+
         track_entry = [25.0,0]
         track_exit = [25.0,50.0]
         n_div = 100
@@ -21,7 +21,7 @@ class MIPs:
         track_position_y=track_entry[1]
 
         for i in range(n_div-1):
-            
+
             x_div_point = (track_exit[0]-track_entry[0])/n_div*i+track_entry[0]+(track_exit[0]-track_entry[0])/(2*n_div)
             y_div_point = (track_exit[1]-track_entry[1])/n_div*i+track_entry[1]+(track_exit[1]-track_entry[1])/(2*n_div)
 
