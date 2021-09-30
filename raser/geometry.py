@@ -138,7 +138,7 @@ class R2dDetector:
         self.nx = int(self.det_width/self.x_step)
         self.ny = int(self.det_thin/self.y_step)
 
-        self.n_start = 0
+        self.t_start = 0
         self.t_end = 3e-9
         self.t_bin = 50e-12
         self.n_bin = int((self.t_end-self.t_start)/self.t_bin)
