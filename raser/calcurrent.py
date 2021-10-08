@@ -642,6 +642,7 @@ class CalCurrent2D:
                 self.track_gain = 1.
 
                 self.end_condition = 0
+                self.n_step = 0
                 while(self.end_condition==0):
 
                     if(self.track_y>=(det.det_thin-1) or self.track_x>=(det.det_width-1)):
