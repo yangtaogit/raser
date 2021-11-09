@@ -475,7 +475,7 @@ class CalCurrent2D:
         # magnetic field effect
 
         # for hole
-        if(self.charg)>0:
+        if(self.eorh)>0:
             FF=self.e_field+self.muhh*np.cross(self.e_field,self.BB)
         # for electron    
         else:
@@ -484,8 +484,8 @@ class CalCurrent2D:
         # the delta x with electric field and magnetic field for unit e or h
 
         if(np.linalg.norm(FF)!=0):
-            self.delta_x = -self.sstep*self.charg*FF[0]/np.linalg.norm(FF)
-            self.delta_y = -self.sstep*self.charg*FF[1]/np.linalg.norm(FF)
+            self.delta_x = -self.sstep*self.eorh*FF[0]/np.linalg.norm(FF)
+            self.delta_y = -self.sstep*self.eorh*FF[1]/np.linalg.norm(FF)
         else:
             self.delta_x=0
             self.delta_y=0 
@@ -539,7 +539,7 @@ class CalCurrent2D:
 
     def update_track_info(self):
 
-        if(self.charg>0):
+        if(self.eorh>0):
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][0].append(self.track_time)
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][1].append(self.track_x)
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][2].append(self.track_y)
@@ -547,7 +547,7 @@ class CalCurrent2D:
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][4].append(self.track_current)
             self.delta_track_info_dic_p["tk_"+str(self.track_number)][5].append(self.track_gain)
  
-        if(self.charg<0):
+        if(self.eorh<0):
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][0].append(self.track_time)
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][1].append(self.track_x)
             self.delta_track_info_dic_n["tk_"+str(self.track_number)][2].append(self.track_y)
@@ -627,11 +627,11 @@ class CalCurrent2D:
 
                 if(j==0):
                     self.charge = 1*track.ionized_pairs[i] # hole
-                    self.charg = 1
+                    self.eorh = 1
 
                 if(j==1):
                     self.charge = -1*track.ionized_pairs[i] # electron
-                    self.charg = -1
+                    self.eorh = -1
                 
                 self.track_time = 0.
                 self.track_x = track.track_position[i][0]
@@ -766,9 +766,9 @@ class CalCurrent2D:
                 self.charge = self.gain_track_info_list[i][4]
 
                 if(self.charge>0):
-                    self.charg = 1
+                    self.eorh = 1
                 if(self.charge<0):
-                    self.charg = -1
+                    self.eorh = -1
 
                 self.track_name = self.gain_track_info_list[i][0]
                 self.track_time = self.gain_track_info_list[i][1]
