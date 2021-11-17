@@ -10,8 +10,7 @@ import fenics
 import mshr
 import sys
 import numpy as np
-import ROOT
-from array import array
+import matplotlib.pyplot as plt
 
 
 #Calculate the weighting potential and electric field
@@ -344,9 +343,6 @@ class FenicsCal2D:
         # poential & field
         self.potential_value_2d = []
     
-        self.electric_field_x_value = [ [] for n in range(self.det.ny+1) ]
-        self.electric_field_y_value = [ [] for n in range(self.det.ny) ]
-
         self.electric_field_x_position = [ [] for n in range(self.det.ny+1) ]
         self.electric_field_y_position = [ [] for n in range(self.det.ny) ]
 
@@ -398,6 +394,7 @@ class FenicsCal2D:
         potential_value_2d = np.array(potential_value_1d).reshape(ny+1,nx+1)
 
         self.potential_value_2d = potential_value_2d
+        self.potential_value_1d = potential_value_1d
 
         # print(self.potential_value_2d)
 
@@ -438,54 +435,62 @@ class FenicsCal2D:
         weighting_potential_value_2d = np.array(weighting_potential_value_1d).reshape(ny+1,nx+1)
 
         self.weighting_potential_value_2d = weighting_potential_value_2d
+        self.weighting_potential_value_1d = weighting_potential_value_1d
 
-        return weighting_potential_value_2d
+        return weighting_potential_value_1d
 
     def cal_electric_field(self):
 
         width = self.det.det_width
         thin = self.det.det_thin
         
-        nx = self.det.nx
-        ny = self.det.ny
+        nx = self.det.nx+1
+        ny = self.det.ny+1
 
         x_step = width/nx
         y_step = thin/ny
 
-        # x direction
-        for j in range(ny+1):
-            for i in range(nx):
+        self.p_w_electric = [ [] for n in range(nx) ]
+        self.p_electric = [ [] for n in range(nx) ]
+        self.x_position = [ [] for n in range(nx) ]
+        self.y_position = [ [] for n in range(nx) ]
 
-                # electric field
-                tmp_xpos = 0.5*x_step*(2*i+1)
-                tmp_xef = (self.potential_value_2d[j][i] - self.potential_value_2d[j][i+1])/x_step
-                self.electric_field_x_position[j].append(tmp_xpos)
-                self.electric_field_x_value[j].append(tmp_xef)
-
-                # weighting field
-                tmp_wxpos = 0.5*x_step*(2*i+1)
-                tmp_xwef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j][i+1])/x_step
-                self.weighting_electric_field_x_position[j].append(tmp_wxpos)
-                self.weighting_electric_field_x_value[j].append(tmp_xwef)
-
-
-        # y direction 
         for j in range(ny):
-            for i in range(nx+1):
+            for i in range(nx):
+                self.x_position[i].append(x_step*(i))
+                self.y_position[i].append(y_step*(j))
+                if (j==0):
+                    self.p_w_electric[i].append(0)
+                    self.p_electric[i].append(self.det.bias_voltage)
+                elif(j==ny-1):
+                    self.p_w_electric[i].append(1)
+                    self.p_electric[i].append(0)
+                else:
+                    self.p_w_electric[i].append(self.weighting_potential_value_1d[i+j*nx])
+                    self.p_electric[i].append(self.potential_value_1d[i+j*nx])
 
-                # electric field
-                tmp_ypos = 0.5*y_step*(2*j+1)
-                tmp_yef = (self.potential_value_2d[j][i]- self.potential_value_2d[j+1][i])/y_step
-                self.electric_field_y_position[j].append(tmp_ypos)
-                self.electric_field_y_value[j].append(tmp_yef)
+    def cal_field(self):
 
-                # weighting field
-                tmp_wypos = 0.5*y_step*(2*j+1)
-                tmp_ywef = (self.weighting_potential_value_2d[j][i] - self.weighting_potential_value_2d[j+1][i])/y_step
-                self.weighting_electric_field_y_position[j].append(tmp_wypos)
-                self.weighting_electric_field_y_value[j].append(tmp_ywef)     
+        nx = self.det.nx
+        ny = self.det.ny
 
+        width = self.det.det_width
+        thin = self.det.det_thin
 
+        x_step = width/nx
+        y_step = thin/ny
+
+        self.electric_field_x_position = [[]for n in range(nx)]
+        self.electric_field_y_position = [[]for n in range(nx)]
+        self.electric_field_x_value = [[]for n in range(nx)]
+        self.electric_field_y_value = [[]for n in range(nx)]
+
+        for j in range(ny):
+            for i in range(nx):
+                self.electric_field_x_position[i].append(0.5*x_step*(2*i+1))
+                self.electric_field_y_position[i].append(0.5*y_step*(2*j+1))
+                self.electric_field_x_value[i].append((self.p_electric[i+1][j]-self.p_electric[i][j])/x_step)
+                self.electric_field_y_value[i].append((self.p_electric[i][j+1]-self.p_electric[i][j])/y_step)
 
     def cal_point_field(self,px_point,py_point,input_value):
 
@@ -542,10 +547,10 @@ class FenicsCal2D:
         else:
             r_t=e_v_y1/y_step
 
-        value_11=input_value[ny1_v][nx1_v]
-        value_21=input_value[ny1_v][nx2_v]
-        value_12=input_value[ny1_v][nx1_v]
-        value_22=input_value[ny1_v][nx2_v]
+        value_11=input_value[nx1_v][ny1_v]
+        value_21=input_value[nx1_v][ny2_v]
+        value_12=input_value[nx1_v][ny1_v]
+        value_22=input_value[nx1_v][ny2_v]
         out_field=0.0
         out_field=(1-r_u)*(1-r_t)*value_11
         out_field+=r_u*(1-r_t)*value_21
@@ -560,59 +565,36 @@ class FenicsCal2D:
         self.cal_possion()
         self.cal_weighting_possion()
         self.cal_electric_field()
+        self.cal_field()
 
     def draw(self):
 
         cutline = int(self.det.nx/2.0)
 
-        # plot electric field at x = middle
-        ep = array( 'd' )
-        ev = array( 'd' )
+        plt.figure(figsize=(20,20))
 
-        for i in range(self.det.ny):
+        plt.subplot(2,2,1)
+        plt.title('Electric field')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric field [V/um]')
+        plt.plot(self.electric_field_y_position[cutline],self.electric_field_y_value[cutline])
 
-            ep.append(self.electric_field_y_position[i][cutline])
+        plt.subplot(2,2,2)
+        plt.title('Electric field')
+        plt.xlabel('X [um]')
+        plt.ylabel('Electric field [V/um]')
+        plt.plot(self.electric_field_x_position[1],self.electric_field_x_value[1])
 
-            efx = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_x_value)
-            efy = self.cal_point_field(self.det.det_width/2.0, self.electric_field_y_position[i][cutline], self.electric_field_y_value)
-            ef = np.array([efx,efy])
+        plt.subplot(2,2,3)
+        plt.title('weighting potential')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric potential [V]')
+        plt.plot(self.y_position[0], self.p_w_electric[0])
 
-            ef_value = np.linalg.norm(ef)#*1e4 #V/cm
+        plt.subplot(2,2,4)
+        plt.title('potential')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric potential [V]')
+        plt.plot(self.y_position[0], self.p_electric[0])
 
-            ev.append(ef_value)
-
-        # print(ep)
-        # print(ev)
-
-        g_e = ROOT.TGraph(self.det.ny,ep,ev)
-
-        g_e.SetLineColor(600)
-        g_e.SetLineWidth(4)
-        g_e.SetTitle( 'Electric Field at Cut Line' )
-        g_e.GetXaxis().SetTitle( 'Dpeth [um]' )
-        g_e.GetXaxis().SetRangeUser(0,self.det.det_thin)
-        g_e.GetYaxis().SetTitle( 'E [V/um]' )
-
-        g_e.GetXaxis().CenterTitle()
-        g_e.GetXaxis().SetTitleOffset(1.8)
-        g_e.GetXaxis().SetTitleSize(0.05)
-        g_e.GetXaxis().SetLabelSize(0.05)
-        #g_e.GetXaxis().SetNdivisions(505)
-
-        g_e.GetYaxis().CenterTitle()
-        g_e.GetYaxis().SetTitleOffset(1.8)
-        g_e.GetYaxis().SetTitleSize(0.05)
-        g_e.GetYaxis().SetLabelSize(0.05)
-        #g_e.GetYaxis().SetNdivisions(505)
-       
-        c = ROOT.TCanvas( 'c', 'c',500, 500 )
-        c.SetGrid()
-        c.SetLeftMargin(0.18)
-        c.SetBottomMargin(0.18)
-        # c.Divide(1,2)
-
-        c.cd()
-        g_e.Draw()
-        c.Modified()
-        c.Update()
-        c.SaveAs("./fig/%s_lgad_2D_electricfield_%dV.pdf"%(self.det.mat_name, self.det.bias_voltage))
+        plt.savefig("electric_field.pdf")

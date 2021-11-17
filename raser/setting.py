@@ -23,7 +23,10 @@ class Setting:
         _pardic : dictionaries
             Storage the input parameters
         steplength : float
-            The length of  each step for e-h pairs drift 
+            The length of  each step for e-h pairs drift
+        laser_model : str
+            Define the Laser Absorption Pattern 
+        
         @Modify:
         ---------
             2021/09/02
@@ -32,7 +35,11 @@ class Setting:
         self.input2dic(parameters)
         self.det_model = self._pardic['det_model']
         self.read_par(self._pardic['parfile'])
-        self.scan_variation()
+        if "laser_model" in self._pardic:
+            self.laser_model=self._pardic['laser_model']
+            self.append_par(self._pardic['laser_file'])
+        if self.det_model in ("plugin3D","planar3D"):
+            self.scan_variation()
 
     def input2dic(self,parameters):
         " Transfer input list to dictinary"
@@ -54,6 +61,18 @@ class Setting:
             else:
                 paras[x] = paras[x]
         self.paras = paras
+
+    def append_par(self,jsonfile):
+        "Read the laser.json file and save the input parameters in paras"
+        with open(jsonfile) as f:
+            dic_pars = json.load(f)
+        for dic_par in dic_pars:
+            for x in dic_par: 
+                if self.is_number(dic_par[x]):          
+                    dic_par[x] = float(dic_par[x])
+                else:
+                    dic_par[x] = dic_par[x]
+            self.paras.update(dic_par) 
 
     @property
     def detector(self):
@@ -98,6 +117,16 @@ class Setting:
         
         if "lgad2D" in self.det_model:
             detector = {'name':'lgad2D',
+                        'det_width':p['det_width'], 'det_thin':p['det_thin'],
+                        'x_step':p['x_step'], 'y_step':p['y_step'],
+                        'material':p['material'],
+                        'doping_epr':p['doping_epr'],
+                        'bias_voltage':p['bias_voltage'],
+                        'temperature':p['temperature']
+                        }
+
+        if "pin2D" in self.det_model:
+            detector = {'name':'pin2D',
                         'det_width':p['det_width'], 'det_thin':p['det_thin'],
                         'x_step':p['x_step'], 'y_step':p['y_step'],
                         'material':p['material'],
@@ -150,8 +179,8 @@ class Setting:
         par_out : list
             Theoretical position of outgoing particles
         g4_vis : bool
-            False: Do not display graphical interface of geant4 partivles
-            True: Do not display graphical interface of geant4 partivles
+            False: Graphical interface of geant4 particles Disabled
+            True: Graphical interface of geant4 particles Enabled
         @Returns:
         ---------
             A dictionary containing all parameters used in geant4  
@@ -202,6 +231,61 @@ class Setting:
     #     return track_par
 
     @property
+    def laser(self):
+        """
+        Description:
+            Define laser parameters
+        Parameters:
+        ---------
+        tech : str
+            Interaction Pattern Between Laser and Detector
+        direction : str
+            Direction of Laser Incidence, Could be "top" "edge" or "bottom"
+
+        alpha : float
+            the Linear Absorption Coefficient of the Bulk of the Device
+        beta_2 : float
+            the Quadratic Absorption Coefficient of the Bulk of the Device
+        refractionIndex :float
+            the Refraction Index of the Bulk of the Device
+
+        wavelength : float
+            the Wavelength of Laser in nm
+        tau : float
+            the Full-width at Half-maximum (FWHM) of the Beam Temporal Profile
+        power : float
+            the Energy per Laser Pulse
+        widthBeamWaist : float
+            the Width of the Beam Waist of the Laser in um
+        l_Rayleigh : float
+            the Rayleigh Width of the Laser Beam
+
+        r_step, h_step : float
+            the Step Length of Block in um,
+            Carriers Generated in the Same Block Have the Same Drift Locus
+        @Returns:
+        ---------
+            A dictionary containing all parameters used in TCTTracks 
+        @Modify:
+        ---------
+            2021/09/08
+        """
+        p = self.paras
+        if hasattr(self,"laser_model"):
+            laser = {'tech':p['laser_model'],'direction':p['direction'],
+                    'refractionIndex':p['refractionIndex'],
+                    "wavelength":p["wavelength"],"tau":p["tau"],"power":p["power"],"widthBeamWaist":p["widthBeamWaist"],
+                    'r_step':p['r_step'],'h_step':p['h_step']
+                    }
+            if self.laser_model == "SPA":
+                laser.update({'alpha':p['alpha']})
+            if self.laser_model == "TPA":
+                laser.update({'beta_2':p['beta_2']})
+            if 'l_Rayleigh' in p:
+                laser.update({'l_Rayleigh':p['l_Rayleigh']})
+        return laser
+
+    @property
     def amplifer(self):
         """
         Description:
@@ -242,7 +326,8 @@ class Setting:
             self.g4seed = self.intance_number * self.total_events
             self.output = self._pardic["output"]
         else:
-            self.total_events = 30
+            p = self.paras
+            self.total_events = int(p['total_events'])
             self.g4seed = 0 
 
     def is_number(self,s):

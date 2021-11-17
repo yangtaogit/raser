@@ -48,7 +48,7 @@ class R3dDetector:
         @param:
             matter -- 0 is silicon, 1 is silicon carbide
             positive_cu -- Current from holes move
-            negtive_cu -- Current from electrons move
+            negative_cu -- Current from electrons move
             sum_cu -- Current from e-h move
         @Returns:
             None
@@ -62,7 +62,7 @@ class R3dDetector:
         
         self.positive_cu = ROOT.TH1F("charge+", "Positive Current",
                                      self.n_bin, self.t_start, self.t_end)
-        self.negtive_cu = ROOT.TH1F("charge-", "Negative Current",
+        self.negative_cu = ROOT.TH1F("charge-", "Negative Current",
                                      self.n_bin, self.t_start, self.t_end)
         self.sum_cu = ROOT.TH1F("charge","Total Current",
                                 self.n_bin, self.t_start, self.t_end)
@@ -138,14 +138,15 @@ class R2dDetector:
         self.nx = int(self.det_width/self.x_step)
         self.ny = int(self.det_thin/self.y_step)
 
-        self.n_bin = 1000
+        self.t_start = 0
         self.t_end = 3e-9
         self.t_bin = 50e-12
+        self.n_bin = int((self.t_end-self.t_start)/self.t_bin)
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
-        self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
+        self.negative_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
 
         self.gain_positive_cu = ROOT.TH1F("gain_charge+","Current Contribution",self.n_bin,0,self.t_end)
-        self.gain_negtive_cu = ROOT.TH1F("gain_charge-","Gain Negative Current",self.n_bin,0,self.t_end)
+        self.gain_negative_cu = ROOT.TH1F("gain_charge-","Gain Negative Current",self.n_bin,0,self.t_end)
 
         self.gain_n_n_cu = ROOT.TH1F("gain_n_n","Current Contribution",self.n_bin,0,self.t_end)
         self.gain_n_p_cu = ROOT.TH1F("gain_n_p","Current Contribution",self.n_bin,0,self.t_end)
