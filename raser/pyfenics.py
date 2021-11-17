@@ -412,8 +412,7 @@ class FenicsCal2D:
         V = fenics.FunctionSpace(mesh, "P", 1)
 
         # Define boundary condition
-        #Adjusted
-        u_D = fenics.Expression('x[1] < tol? 0 : det_voltage', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
+        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
 
         def boundary(x, on_boundary):
             return abs(x[1])<1E-14 or abs(x[1]-thin)<1E-14
