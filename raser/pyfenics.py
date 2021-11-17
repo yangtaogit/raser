@@ -566,3 +566,35 @@ class FenicsCal2D:
         self.cal_weighting_possion()
         self.cal_electric_field()
         self.cal_field()
+
+def draw(self):
+
+        cutline = int(self.det.nx/2.0)
+
+        plt.figure(figsize=(20,20))
+
+        plt.subplot(2,2,1)
+        plt.title('Electric field')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric field [V/um]')
+        plt.plot(self.electric_field_y_position[cutline],self.electric_field_y_value[cutline])
+
+        plt.subplot(2,2,2)
+        plt.title('Electric field')
+        plt.xlabel('X [um]')
+        plt.ylabel('Electric field [V/um]')
+        plt.plot(self.electric_field_x_position[1],self.electric_field_x_value[1])
+
+        plt.subplot(2,2,3)
+        plt.title('weighting potential')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric potential [V]')
+        plt.plot(self.y_position[0], self.p_w_electric[0])
+
+        plt.subplot(2,2,4)
+        plt.title('potential')
+        plt.xlabel('depth [um]')
+        plt.ylabel('Electric potential [V]')
+        plt.plot(self.y_position[0], self.p_electric[0])
+
+        plt.savefig("electric_field.pdf")
