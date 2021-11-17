@@ -10,8 +10,7 @@ import fenics
 import mshr
 import sys
 import numpy as np
-import ROOT
-from array import array
+import matplotlib.pyplot as plt
 
 
 #Calculate the weighting potential and electric field
@@ -467,8 +466,8 @@ class FenicsCal2D:
                     self.p_w_electric[i].append(1)
                     self.p_electric[i].append(0)
                 else:
-                    self.p_w_electric[i].append(self.w_electric_value[i+j*nx])
-                    self.p_electric[i].append(self.electric_value[i+j*nx])
+                    self.p_w_electric[i].append(self.weighting_potential_value_1d[i+j*nx])
+                    self.p_electric[i].append(self.potential_value_1d[i+j*nx])
 
     def cal_field(self):
 
