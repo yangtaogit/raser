@@ -567,7 +567,7 @@ class FenicsCal2D:
         self.cal_electric_field()
         self.cal_field()
 
-def draw(self):
+    def draw(self):
 
         cutline = int(self.det.nx/2.0)
 
