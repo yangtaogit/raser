@@ -10,8 +10,7 @@ import fenics
 import mshr
 import sys
 import numpy as np
-import ROOT
-from array import array
+import matplotlib.pyplot as plt
 
 
 #Calculate the weighting potential and electric field
@@ -413,7 +412,8 @@ class FenicsCal2D:
         V = fenics.FunctionSpace(mesh, "P", 1)
 
         # Define boundary condition
-        u_D = fenics.Expression('x[1] < tol? det_voltage : 0', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
+        #Adjusted
+        u_D = fenics.Expression('x[1] < tol? 0 : det_voltage', degree = 2,tol = 1E-14,det_voltage = self.det.bias_voltage/abs(self.det.bias_voltage))
 
         def boundary(x, on_boundary):
             return abs(x[1])<1E-14 or abs(x[1]-thin)<1E-14
@@ -467,8 +467,8 @@ class FenicsCal2D:
                     self.p_w_electric[i].append(1)
                     self.p_electric[i].append(0)
                 else:
-                    self.p_w_electric[i].append(self.w_electric_value[i+j*nx])
-                    self.p_electric[i].append(self.electric_value[i+j*nx])
+                    self.p_w_electric[i].append(self.weighting_potential_value_1d[i+j*nx])
+                    self.p_electric[i].append(self.potential_value_1d[i+j*nx])
 
     def cal_field(self):
 
@@ -530,7 +530,7 @@ class FenicsCal2D:
             ny1_v=ny_value-1
             ny2_v=ny_value
 
-        if (nx_value<=0):
+        if (nx_value<=1):
             r_u=0
             nx1_v=nx2_v
         elif (nx_value>=nx-1):
@@ -539,7 +539,7 @@ class FenicsCal2D:
         else:
             r_u=e_v_x1/x_step
 
-        if (ny_value<=0):
+        if (ny_value<=1):
             r_t=0
             ny1_v=ny2_v
         elif (ny_value>=ny-1):
@@ -567,35 +567,3 @@ class FenicsCal2D:
         self.cal_weighting_possion()
         self.cal_electric_field()
         self.cal_field()
-
-    def draw(self):
-
-        cutline = int(self.det.nx/2.0)
-
-        plt.figure(figsize=(20,20))
-
-        plt.subplot(2,2,1)
-        plt.title('Electric field')
-        plt.xlabel('depth [um]')
-        plt.ylabel('Electric field [V/um]')
-        plt.plot(self.electric_field_y_position[cutline],self.electric_field_y_value[cutline])
-
-        plt.subplot(2,2,2)
-        plt.title('Electric field')
-        plt.xlabel('X [um]')
-        plt.ylabel('Electric field [V/um]')
-        plt.plot(self.electric_field_x_position[1],self.electric_field_x_value[1])
-
-        plt.subplot(2,2,3)
-        plt.title('weighting potential')
-        plt.xlabel('depth [um]')
-        plt.ylabel('Electric potential [V]')
-        plt.plot(self.y_position[0], self.p_w_electric[0])
-
-        plt.subplot(2,2,4)
-        plt.title('potential')
-        plt.xlabel('depth [um]')
-        plt.ylabel('Electric potential [V]')
-        plt.plot(self.y_position[0], self.p_electric[0])
-
-        plt.savefig("electric_field.pdf")
