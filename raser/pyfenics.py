@@ -529,7 +529,7 @@ class FenicsCal2D:
             ny1_v=ny_value-1
             ny2_v=ny_value
 
-        if (nx_value<=1):
+        if (nx_value<=0):
             r_u=0
             nx1_v=nx2_v
         elif (nx_value>=nx-1):
@@ -538,7 +538,7 @@ class FenicsCal2D:
         else:
             r_u=e_v_x1/x_step
 
-        if (ny_value<=1):
+        if (ny_value<=0):
             r_t=0
             ny1_v=ny2_v
         elif (ny_value>=ny-1):
